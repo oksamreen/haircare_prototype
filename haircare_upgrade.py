@@ -26,13 +26,29 @@ st.markdown("""
     --ai-bubble: #F0E8DF;
 }
 
-* { font-family: 'DM Sans', sans-serif; }
+* { font-family: 'DM Sans', sans-serif; color: var(--deep); }
+
+/* Force light mode across everything */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
+.stApp, .main, section.main { 
+    background-color: var(--cream) !important;
+    color: var(--deep) !important;
+}
 
 .stApp {
-    background-color: var(--cream);
+    background-color: var(--cream) !important;
     background-image: 
         radial-gradient(ellipse at 20% 50%, rgba(196,113,74,0.06) 0%, transparent 60%),
         radial-gradient(ellipse at 80% 20%, rgba(139,158,122,0.06) 0%, transparent 60%);
+}
+
+/* Force all streamlit text elements to dark */
+.stApp p, .stApp span, .stApp label, .stApp div,
+.stApp h1, .stApp h2, .stApp h3, .stApp h4,
+.stMarkdown, .stMarkdown p, .stMarkdown span,
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] span {
+    color: var(--deep) !important;
 }
 
 /* Hide default streamlit chrome */
@@ -249,15 +265,19 @@ st.markdown("""
     border-color: var(--blush) !important;
 }
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, var(--warm-white) 0%, #F5EDE4 100%);
+    background: linear-gradient(180deg, var(--warm-white) 0%, #F5EDE4 100%) !important;
     border-right: 1px solid var(--blush);
 }
+[data-testid="stSidebar"] * { color: var(--deep) !important; }
 [data-testid="stSidebar"] .stMarkdown h2 {
     font-family: 'Cormorant Garamond', serif;
-    color: var(--deep);
+    color: var(--deep) !important;
     font-size: 1.5rem;
     font-weight: 400;
 }
+[data-baseweb="tag"] { background-color: var(--terracotta) !important; }
+[data-baseweb="tag"] span, [data-baseweb="tag"] * { color: white !important; }
+[data-baseweb="select"] > div { background-color: var(--warm-white) !important; color: var(--deep) !important; }
 
 .typing-indicator {
     display: flex;
@@ -361,7 +381,6 @@ CARD_META = {
 
 def render_remedy_cards(remedy_data: dict, categories: list):
     """Render remedy as styled HTML cards."""
-    # Determine how many solutions per category
     n_cats = len(categories)
     n_solutions = 3 if n_cats <= 2 else 2
 
@@ -397,6 +416,8 @@ if "selected_cats" not in st.session_state:
     st.session_state.selected_cats = ["topical", "nutrition", "vitamins", "daily_care"]
 if "started" not in st.session_state:
     st.session_state.started = False
+if "chat_input" not in st.session_state:
+    st.session_state.chat_input = ""
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -425,6 +446,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.session_state.remedy = None
         st.session_state.started = False
+        st.session_state.chat_input = ""
         st.rerun()
     
     st.markdown("")
@@ -446,7 +468,6 @@ chat_container = st.container()
 with chat_container:
     st.markdown('<div class="chat-wrap">', unsafe_allow_html=True)
     
-    # Chat header
     st.markdown("""
     <div class="chat-header">
         <div class="chat-avatar">🌿</div>
@@ -457,7 +478,6 @@ with chat_container:
     </div>
     """, unsafe_allow_html=True)
 
-    # Messages area
     msg_area = st.container()
     with msg_area:
         if not st.session_state.started:
@@ -475,7 +495,6 @@ with chat_container:
                 role = msg["role"]
                 content = msg["content"]
                 if role == "assistant" and msg.get("is_remedy"):
-                    # Render remedy cards
                     st.markdown(f"""
                     <div class="msg-row">
                         <div class="msg-avatar ai">🌿</div>
@@ -502,7 +521,7 @@ with chat_container:
                     """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('</div>', unsafe_allow_html=True)  # close chat-wrap
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Input area ────────────────────────────────────────────────────────────────
 st.markdown("<div style='max-width:760px; margin: 1rem auto 0;'>", unsafe_allow_html=True)
@@ -510,27 +529,23 @@ st.markdown("<div style='max-width:760px; margin: 1rem auto 0;'>", unsafe_allow_
 if not st.session_state.started:
     if st.button("✨ Begin my consultation", use_container_width=True):
         st.session_state.started = True
-        opening = "Hello! I'm Remedy, your personal hair consultant. I'll ask you just a few quick questions to build your custom plan. 💆‍♀️\n\nTo start — what's your biggest hair or scalp concern right now?"
+        opening = "Hello! I'm Remedy, your personal hair consultant. I'll ask you just a few quick questions to build your custom plan. 💆\u200d♀️\n\nTo start — what's your biggest hair or scalp concern right now?"
         st.session_state.messages.append({"role": "assistant", "content": opening})
         st.rerun()
 elif st.session_state.remedy is None:
-    col1, col2 = st.columns([5, 1])
-    with col1:
-        user_input = st.text_input(
-            "Message",
-            placeholder="Type your answer here…",
-            label_visibility="collapsed",
-            key="chat_input"
-        )
-    with col2:
-        send = st.button("Send →", use_container_width=True)
-    
-    if (send or user_input) and user_input.strip():
+    with st.form(key="chat_form", clear_on_submit=True):
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_input = st.text_input(
+                "Message",
+                placeholder="Type your answer here…",
+                label_visibility="collapsed"
+            )
+        with col2:
+            submitted = st.form_submit_button("Send →", use_container_width=True)
+    if submitted and user_input.strip():
         st.session_state.messages.append({"role": "user", "content": user_input.strip()})
-        
-        with st.spinner(""):
-            response = chat_with_cohere(st.session_state.messages)
-        
+        response = chat_with_cohere(st.session_state.messages)
         parsed = parse_remedy(response)
         if parsed and parsed.get("profile_complete"):
             st.session_state.remedy = parsed
@@ -542,7 +557,6 @@ elif st.session_state.remedy is None:
             })
         else:
             st.session_state.messages.append({"role": "assistant", "content": response})
-        
         st.rerun()
 else:
     st.markdown("""
