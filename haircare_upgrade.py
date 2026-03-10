@@ -13,17 +13,17 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 
 :root {
-    --cream: #FAF6F0;
-    --warm-white: #FDF9F4;
-    --blush: #E8D5C4;
-    --terracotta: #C4714A;
-    --deep: #2C1810;
-    --mid: #6B4423;
-    --sage: #8B9E7A;
-    --gold: #C9A96E;
-    --chat-bg: #FFF8F2;
-    --user-bubble: #C4714A;
-    --ai-bubble: #F0E8DF;
+    --cream: #F4E9CD;
+    --warm-white: #F9F2E3;
+    --blush: #9DBEBB;
+    --terracotta: #468189;
+    --deep: #031926;
+    --mid: #77ACA2;
+    --sage: #9DBEBB;
+    --gold: #77ACA2;
+    --chat-bg: #F4E9CD;
+    --user-bubble: #468189;
+    --ai-bubble: #E4F0EF;
 }
 
 * { font-family: 'DM Sans', sans-serif; color: var(--deep); }
@@ -38,8 +38,8 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 .stApp {
     background-color: var(--cream) !important;
     background-image: 
-        radial-gradient(ellipse at 20% 50%, rgba(196,113,74,0.06) 0%, transparent 60%),
-        radial-gradient(ellipse at 80% 20%, rgba(139,158,122,0.06) 0%, transparent 60%);
+        radial-gradient(ellipse at 20% 50%, rgba(70,129,137,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(119,172,162,0.06) 0%, transparent 60%);
 }
 
 /* Force all streamlit text elements to dark */
@@ -49,6 +49,12 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 [data-testid="stMarkdownContainer"] p,
 [data-testid="stMarkdownContainer"] span {
     color: var(--deep) !important;
+}
+
+/* Override: chat header text must be white */
+.chat-header div, .chat-header span, .chat-header p,
+.chat-title-text, .chat-status {
+    color: white !important;
 }
 
 /* Hide default streamlit chrome */
@@ -125,15 +131,18 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
     font-size: 1.1rem;
 }
 .chat-title-text {
-    color: white;
+    color: white !important;
     font-family: 'Cormorant Garamond', serif;
     font-size: 1.2rem;
     font-weight: 400;
 }
 .chat-status {
-    color: rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.85) !important;
     font-size: 0.7rem;
     letter-spacing: 0.05em;
+}
+.chat-header * {
+    color: white !important;
 }
 
 /* ── Messages ── */
@@ -259,16 +268,31 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 }
 .stButton > button:hover { opacity: 0.88 !important; }
 
+/* Form submit button (Send →) */
+.stFormSubmitButton > button {
+    background: linear-gradient(135deg, var(--terracotta), var(--mid)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 50px !important;
+    padding: 0.6rem 1.6rem !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.03em !important;
+    transition: opacity 0.2s !important;
+}
+.stFormSubmitButton > button:hover { opacity: 0.88 !important; }
+
 /* ── Category selector ── */
 .stMultiSelect > div { 
     border-radius: 12px !important;
     border-color: var(--blush) !important;
 }
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, var(--warm-white) 0%, #F5EDE4 100%) !important;
+    background: linear-gradient(180deg, var(--warm-white) 0%, #C8E0DE 100%) !important;
     border-right: 1px solid var(--blush);
 }
-[data-testid="stSidebar"] * { color: var(--deep) !important; }
+[data-testid="stSidebar"] * { color: #031926 !important; }
 [data-testid="stSidebar"] .stMarkdown h2 {
     font-family: 'Cormorant Garamond', serif;
     color: var(--deep) !important;
@@ -442,14 +466,6 @@ with st.sidebar:
     st.session_state.selected_cats = [cat_options[l] for l in selected_labels]
     
     st.divider()
-    if st.button("🔄 Start over", use_container_width=True):
-        st.session_state.messages = []
-        st.session_state.remedy = None
-        st.session_state.started = False
-        st.session_state.chat_input = ""
-        st.rerun()
-    
-    st.markdown("")
     st.caption("Remedy Me uses AI to generate personalised suggestions. Always consult a trichologist for medical concerns.")
 
 # ── Main page ─────────────────────────────────────────────────────────────────
@@ -472,8 +488,8 @@ with chat_container:
     <div class="chat-header">
         <div class="chat-avatar">🌿</div>
         <div>
-            <div class="chat-title-text">Remedy</div>
-            <div class="chat-status">AI HAIR CONSULTANT · ONLINE</div>
+            <div class="chat-title-text" style="color: white !important;">Remedy</div>
+            <div class="chat-status" style="color: rgba(255,255,255,0.85) !important;">AI HAIR CONSULTANT · ONLINE</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -482,7 +498,7 @@ with chat_container:
     with msg_area:
         if not st.session_state.started:
             st.markdown("""
-            <div style="padding: 2rem; text-align: center; color: #6B4423; opacity: 0.7;">
+            <div style="padding: 2rem; text-align: center; color: #031926; opacity: 0.7;">
                 <div style="font-size: 2rem; margin-bottom: 0.5rem;">🌿</div>
                 <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.1rem;">
                     Click below to begin your consultation
@@ -560,7 +576,7 @@ elif st.session_state.remedy is None:
         st.rerun()
 else:
     st.markdown("""
-    <div style="text-align:center; padding: 0.5rem; color: #6B4423; font-size: 0.85rem;">
+    <div style="text-align:center; padding: 0.5rem; color: #031926; font-size: 0.85rem; font-weight: 500;">
         ✅ Your remedy is ready! Adjust categories in the sidebar to customise your plan.
     </div>
     """, unsafe_allow_html=True)
