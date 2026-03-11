@@ -1,5 +1,5 @@
 import streamlit as st
-import cohere
+import google.generativeai as genai
 import json
 import re
 import time
@@ -323,12 +323,16 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def get_cohere_client():
-    api_key = st.secrets.get("COHERE_API_KEY", "")
+def get_gemini_model():
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
     if not api_key:
-        st.error("⚠️ Add your COHERE_API_KEY to .streamlit/secrets.toml")
+        st.error("⚠️ Add your GEMINI_API_KEY to .streamlit/secrets.toml")
         st.stop()
-    return cohere.Client(api_key)
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        system_instruction=SYSTEM_PROMPT
+    )
 
 SYSTEM_PROMPT = """You are Remedy, a warm, knowledgeable hair care consultant.
 Your role is to have a SHORT, friendly conversation (3–4 exchanges max) to learn about the user's hair.
@@ -367,20 +371,14 @@ Rules for remedy content:
 """
 
 def chat_with_cohere(messages: list) -> str:
-    co = get_cohere_client()
-    cohere_messages = []
-    for m in messages:
-        role = "USER" if m["role"] == "user" else "CHATBOT"
-        cohere_messages.append({"role": role, "message": m["content"]})
-    
-    response = co.chat(
-        model="command-r-08-2024",
-        preamble=SYSTEM_PROMPT,
-        chat_history=cohere_messages[:-1],
-        message=cohere_messages[-1]["message"],
-        temperature=0.7,
-        request_options={"timeout_in_seconds": 60}
-    )
+    model = get_gemini_model()
+    # Build Gemini history (all messages except the last one)
+    history = []
+    for m in messages[:-1]:
+        role = "user" if m["role"] == "user" else "model"
+        history.append({"role": role, "parts": [m["content"]]})
+    chat = model.start_chat(history=history)
+    response = chat.send_message(messages[-1]["content"])
     return response.text
 
 def parse_remedy(text: str):
