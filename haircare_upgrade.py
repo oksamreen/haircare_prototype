@@ -378,7 +378,8 @@ def chat_with_cohere(messages: list) -> str:
         preamble=SYSTEM_PROMPT,
         chat_history=cohere_messages[:-1],
         message=cohere_messages[-1]["message"],
-        temperature=0.7
+        temperature=0.7,
+        request_options={"timeout_in_seconds": 60}
     )
     return response.text
 
