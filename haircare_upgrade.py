@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from groq import Groq
 import json
 import re
 import time
@@ -323,16 +323,12 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def get_gemini_model():
-    api_key = st.secrets.get("GEMINI_API_KEY", "")
+def get_groq_client():
+    api_key = st.secrets.get("GROQ_API_KEY", "")
     if not api_key:
-        st.error("⚠️ Add your GEMINI_API_KEY to .streamlit/secrets.toml")
+        st.error("⚠️ Add your GROQ_API_KEY to .streamlit/secrets.toml")
         st.stop()
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
-        system_instruction=SYSTEM_PROMPT
-    )
+    return Groq(api_key=api_key)
 
 SYSTEM_PROMPT = """You are Remedy, a warm, knowledgeable hair care consultant.
 Your role is to have a SHORT, friendly conversation (3–4 exchanges max) to learn about the user's hair.
@@ -371,15 +367,17 @@ Rules for remedy content:
 """
 
 def chat_with_cohere(messages: list) -> str:
-    model = get_gemini_model()
-    # Build Gemini history (all messages except the last one)
-    history = []
-    for m in messages[:-1]:
-        role = "user" if m["role"] == "user" else "model"
-        history.append({"role": role, "parts": [m["content"]]})
-    chat = model.start_chat(history=history)
-    response = chat.send_message(messages[-1]["content"])
-    return response.text
+    client = get_groq_client()
+    groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for m in messages:
+        role = "user" if m["role"] == "user" else "assistant"
+        groq_messages.append({"role": role, "content": m["content"]})
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=groq_messages,
+        temperature=0.7
+    )
+    return response.choices[0].message.content
 
 def parse_remedy(text: str):
     """Try to extract JSON from the LLM response."""
