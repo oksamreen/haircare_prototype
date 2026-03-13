@@ -366,7 +366,7 @@ Rules for remedy content:
 - Daily care: routines, habits, tools, lifestyle tips
 """
 
-def chat_with_cohere(messages: list) -> str:
+def chat_with_groq(messages: list) -> str:
     client = get_groq_client()
     groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for m in messages:
@@ -558,7 +558,7 @@ elif st.session_state.remedy is None:
             submitted = st.form_submit_button("Send →", use_container_width=True)
     if submitted and user_input.strip():
         st.session_state.messages.append({"role": "user", "content": user_input.strip()})
-        response = chat_with_cohere(st.session_state.messages)
+        response = groq(st.session_state.messages)
         parsed = parse_remedy(response)
         if parsed and parsed.get("profile_complete"):
             st.session_state.remedy = parsed
