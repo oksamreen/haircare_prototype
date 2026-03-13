@@ -558,7 +558,7 @@ elif st.session_state.remedy is None:
             submitted = st.form_submit_button("Send →", use_container_width=True)
     if submitted and user_input.strip():
         st.session_state.messages.append({"role": "user", "content": user_input.strip()})
-        response = groq(st.session_state.messages)
+        response = chat_with_groq(st.session_state.messages)
         parsed = parse_remedy(response)
         if parsed and parsed.get("profile_complete"):
             st.session_state.remedy = parsed
