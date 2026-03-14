@@ -1,8 +1,18 @@
+"""
+Remedy Me — Personalised Hair Care Consultant
+Assignment 2 · PPDAI · ESADE
+
+A conversational AI app that collects a user's hair profile through a
+3-step chat, then generates a structured remedy plan across four
+categories (topical, nutrition, vitamins, daily care) using Llama 3.3
+70B via the Groq API.
+"""
+
 import streamlit as st
 from groq import Groq
-import json
-import re
-import time
+import json   # for parsing structured LLM output
+import re     # for extracting JSON from free-text LLM responses
+import time   # reserved for future streaming / typing-delay effects
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Remedy Me", page_icon="🌿", layout="wide")
@@ -324,6 +334,11 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def get_groq_client():
+    """
+    Initialise and return a Groq client using the API key stored in
+    Streamlit secrets. Halts the app with a user-friendly error if the
+    key is missing, preventing silent failures in production.
+    """
     api_key = st.secrets.get("GROQ_API_KEY", "")
     if not api_key:
         st.error("⚠️ Add your GROQ_API_KEY to .streamlit/secrets.toml")
@@ -367,6 +382,15 @@ Rules for remedy content:
 """
 
 def chat_with_groq(messages: list) -> str:
+    """
+    Send the full conversation history to Llama 3.3 70B via Groq and
+    return the model's plain-text reply.
+
+    The system prompt is prepended on every call because the Groq API
+    is stateless — no conversation context is retained between requests.
+    Temperature is set to 0.7 to balance creativity with consistency
+    in the remedy recommendations.
+    """
     client = get_groq_client()
     groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for m in messages:
@@ -380,16 +404,33 @@ def chat_with_groq(messages: list) -> str:
     return response.choices[0].message.content
 
 def parse_remedy(text: str):
-    """Try to extract JSON from the LLM response."""
+    """
+    Extract and parse the JSON remedy block from the LLM's response.
+
+    The model is instructed to output pure JSON once the profile is
+    complete, but may occasionally include surrounding text. A regex
+    search isolates the outermost {...} block before parsing, making
+    the extraction robust to minor prompt-following failures.
+
+    Returns a dict if valid JSON is found, otherwise None.
+    """
+    # Greedy match captures the largest {...} block in the response
     match = re.search(r'\{[\s\S]*\}', text)
     if match:
         try:
             return json.loads(match.group())
         except:
-            return None
+            return None  # malformed JSON — treat as a conversational reply
     return None
 
 def amazon_url(query: str) -> str:
+    """
+    Build an Amazon search URL for a given remedy item.
+
+    Parenthetical details (e.g. dosage hints like "Biotin (5000mcg)")
+    are stripped before encoding so the search stays broad enough to
+    return relevant product results.
+    """
     q = query.split("(")[0].strip().replace(" ", "+")
     return f"https://www.amazon.com/s?k={q}&tag=remedyme-20"
 
@@ -401,8 +442,16 @@ CARD_META = {
 }
 
 def render_remedy_cards(remedy_data: dict, categories: list):
-    """Render remedy as styled HTML cards."""
+    """
+    Render the remedy plan as a 2-column HTML card grid.
+
+    The number of recommendations per card scales down from 3 to 2 when
+    more than 2 categories are selected, keeping the layout balanced and
+    avoiding information overload. Amazon links are added only for
+    categories where products are purchasable (topical and vitamins).
+    """
     n_cats = len(categories)
+    # Show fewer items per card when more categories are visible
     n_solutions = 3 if n_cats <= 2 else 2
 
     cards_html = '<div class="remedy-grid">'
@@ -429,6 +478,8 @@ def render_remedy_cards(remedy_data: dict, categories: list):
     return cards_html
 
 # ── Session state ─────────────────────────────────────────────────────────────
+# Streamlit reruns the entire script on each interaction, so all mutable
+# state must live in st.session_state to persist across reruns.
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "remedy" not in st.session_state:
@@ -560,6 +611,8 @@ elif st.session_state.remedy is None:
         st.session_state.messages.append({"role": "user", "content": user_input.strip()})
         response = chat_with_groq(st.session_state.messages)
         parsed = parse_remedy(response)
+        # If the model returned a complete profile JSON, store the remedy
+        # and switch the UI to the results view; otherwise continue the chat
         if parsed and parsed.get("profile_complete"):
             st.session_state.remedy = parsed
             st.session_state.messages.append({
