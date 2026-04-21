@@ -14,6 +14,7 @@ import json      # for parsing structured LLM output
 import re        # for extracting JSON from free-text LLM responses
 import time      # reserved for future streaming / typing-delay effects
 import os        # for feedback log path resolution
+import requests  # for Spoonacular recipe API calls
 from datetime import datetime, timezone  # for timestamping feedback entries
 
 # ── Page config ──────────────────────────────────────────────────────────────
@@ -356,6 +357,7 @@ Ask about ONE thing at a time:
 3. Their primary goal (e.g. growth, hydration, volume, scalp health)
 
 Keep messages concise and warm. Use gentle, elegant language. No bullet points in your questions.
+Do not end messages with a sentence explaining why you are asking the question (e.g. "This will help me tailor your plan", "This helps me match remedies to your needs"). You can still be warm — just let the question speak for itself.
 
 IMPORTANT: If the user's response does not actually answer your question (e.g. they repeat a previous message, go off topic, or give an unclear answer), do NOT move on. Politely acknowledge what they said and ask the same question again in a slightly different way. Only proceed to the next question once you have a clear, relevant answer to the current one. Never assume or infer an answer the user has not explicitly given.
 
@@ -483,6 +485,42 @@ def youtube_url(query: str) -> str:
     import urllib.parse
     return f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
 
+def fetch_nutrition_recipes(nutrition_items: list) -> dict:
+    """
+    For each nutrition item, search Spoonacular for the top matching recipe
+    and return a dict mapping item index → (recipe_title, recipe_url).
+
+    The evidence note (text inside [...]) and parenthetical dosage hints are
+    stripped from the item text before searching so the query stays clean.
+    Falls back to an empty dict if the API key is missing or a call fails,
+    so the rest of the app always renders correctly without recipes.
+    """
+    api_key = st.secrets.get("SPOONACULAR_API_KEY", "")
+    if not api_key:
+        return {}
+
+    results = {}
+    for i, item in enumerate(nutrition_items):
+        # Strip evidence note and parentheticals to get a clean search query
+        query = re.sub(r'\[.*?\]', '', item)   # remove [citation]
+        query = query.split('(')[0].strip()     # remove (dosage hint)
+        try:
+            resp = requests.get(
+                "https://api.spoonacular.com/recipes/complexSearch",
+                params={"query": query, "number": 1, "apiKey": api_key},
+                timeout=5
+            )
+            data = resp.json()
+            if data.get("results"):
+                r = data["results"][0]
+                # Build the Spoonacular recipe page URL from title slug + id
+                slug = re.sub(r"[^a-z0-9]+", "-", r["title"].lower()).strip("-")
+                url = f"https://spoonacular.com/recipes/{slug}-{r['id']}"
+                results[i] = (r["title"], url)
+        except Exception:
+            pass  # silently skip — recipe button simply won't appear for this item
+    return results
+
 CARD_META = {
     "topical":    {"icon": "🌿", "label": "Topical Treatments", "category": "Applied to hair & scalp"},
     "nutrition":  {"icon": "🥑", "label": "Nutrition",          "category": "Foods & drinks"},
@@ -490,7 +528,7 @@ CARD_META = {
     "daily_care": {"icon": "✨", "label": "Daily Care",          "category": "Habits & routines"},
 }
 
-def render_remedy_cards(remedy_data: dict, categories: list, youtube_queries: list = None):
+def render_remedy_cards(remedy_data: dict, categories: list, youtube_queries: list = None, recipe_links: dict = None):
     """
     Render the remedy plan as a 2-column HTML card grid.
 
@@ -504,6 +542,7 @@ def render_remedy_cards(remedy_data: dict, categories: list, youtube_queries: li
     # Show fewer items per card when more categories are visible
     n_solutions = 3 if n_cats <= 2 else 2
     yt_queries = youtube_queries or []
+    recipes = recipe_links or {}
 
     cards_html = '<div class="remedy-grid">'
     for cat in categories:
@@ -519,6 +558,9 @@ def render_remedy_cards(remedy_data: dict, categories: list, youtube_queries: li
             elif cat == "daily_care" and i < len(yt_queries):
                 yt = youtube_url(yt_queries[i])
                 items_html += f' <a href="{yt}" target="_blank" class="amazon-btn" style="background:#FF0000;">▶ Tutorial</a>'
+            elif cat == "nutrition" and i in recipes:
+                title, url = recipes[i]
+                items_html += f' <a href="{url}" target="_blank" class="amazon-btn" style="background:#2E7D32;">🍽 Recipe</a>'
             items_html += '</div>'
         cards_html += f"""
         <div class="remedy-card">
@@ -623,7 +665,8 @@ with chat_container:
                     st.markdown(render_remedy_cards(
                         msg["remedy_data"],
                         st.session_state.selected_cats,
-                        msg.get("youtube_queries", [])
+                        msg.get("youtube_queries", []),
+                        msg.get("recipe_links", {})
                     ), unsafe_allow_html=True)
                 elif role == "assistant":
                     st.markdown(f"""
@@ -697,12 +740,14 @@ elif st.session_state.remedy is None:
         # and switch the UI to the results view; otherwise continue the chat
         if parsed and parsed.get("profile_complete"):
             st.session_state.remedy = parsed
+            recipe_links = fetch_nutrition_recipes(parsed["remedy"].get("nutrition", []))
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": "",
                 "is_remedy": True,
                 "remedy_data": parsed["remedy"],
-                "youtube_queries": parsed.get("youtube_queries", [])
+                "youtube_queries": parsed.get("youtube_queries", []),
+                "recipe_links": recipe_links,
             })
         else:
             st.session_state.messages.append({"role": "assistant", "content": response})
