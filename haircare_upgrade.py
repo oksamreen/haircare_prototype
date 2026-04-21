@@ -10,9 +10,11 @@ categories (topical, nutrition, vitamins, daily care) using Llama 3.3
 
 import streamlit as st
 from groq import Groq
-import json   # for parsing structured LLM output
-import re     # for extracting JSON from free-text LLM responses
-import time   # reserved for future streaming / typing-delay effects
+import json      # for parsing structured LLM output
+import re        # for extracting JSON from free-text LLM responses
+import time      # reserved for future streaming / typing-delay effects
+import os        # for feedback log path resolution
+from datetime import datetime, timezone  # for timestamping feedback entries
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Remedy Me", page_icon="🌿", layout="wide")
@@ -369,7 +371,8 @@ When you have collected all three pieces of information, output ONLY a valid JSO
     "nutrition": ["food/drink 1", "food/drink 2", "food/drink 3"],
     "vitamins": ["supplement 1", "supplement 2", "supplement 3"],
     "daily_care": ["habit 1", "habit 2", "habit 3"]
-  }
+  },
+  "youtube_queries": ["specific YouTube search query for habit 1", "specific YouTube search query for habit 2", "specific YouTube search query for habit 3"]
 }
 
 Rules for remedy content:
@@ -379,11 +382,43 @@ Rules for remedy content:
 - Nutrition: specific foods or drinks that support hair health
 - Vitamins: specific supplements with dosage hints
 - Daily care: routines, habits, tools, lifestyle tips
+- Evidence: after each recommendation, append a brief evidence note in square brackets, e.g.
+  "Rosemary oil scalp massage 3×/week [Panahi et al., 2015 — comparable to minoxidil 2% for hair count]"
+  or "Biotin 2500–5000 mcg daily [supports keratin infrastructure; deficiency linked to hair loss — Patel et al., 2017]"
+  Keep citations concise (author, year, one-line finding). If no specific paper exists, cite a well-known mechanism instead, e.g. "[anti-inflammatory DHT-blocker via 5α-reductase inhibition]".
+- YouTube queries: for each daily_care item, write the exact search phrase a user would type on YouTube to find a helpful tutorial — be specific and include hair type/texture context, e.g. "rice water rinse tutorial for 4C natural hair" not just "rice water rinse".
 """
+
+FEEDBACK_LOG_PATH = os.path.join(os.path.dirname(__file__), "feedback_log.json")
+
+def log_feedback(helpful: bool, personalised: bool, comment: str, profile: dict):
+    """
+    Append a feedback entry to feedback_log.json alongside the user's
+    hair profile so responses can be correlated with personalisation quality.
+
+    The file is created on first use; subsequent calls append to the list.
+    """
+    entry = {
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "helpful": helpful,
+        "felt_personalised": personalised,
+        "comment": comment.strip(),
+        "profile": profile,
+    }
+    existing = []
+    if os.path.exists(FEEDBACK_LOG_PATH):
+        try:
+            with open(FEEDBACK_LOG_PATH, "r") as f:
+                existing = json.load(f)
+        except Exception:
+            existing = []
+    existing.append(entry)
+    with open(FEEDBACK_LOG_PATH, "w") as f:
+        json.dump(existing, f, indent=2)
 
 def chat_with_groq(messages: list) -> str:
     """
-    Send the full conversation history to Llama 3.3 70B via Groq and
+    Send the full conversation history to Qwen3-32B via Groq and
     return the model's plain-text reply.
 
     The system prompt is prepended on every call because the Groq API
@@ -397,11 +432,15 @@ def chat_with_groq(messages: list) -> str:
         role = "user" if m["role"] == "user" else "assistant"
         groq_messages.append({"role": role, "content": m["content"]})
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="qwen/qwen3-32b",
         messages=groq_messages,
         temperature=0.7
     )
-    return response.choices[0].message.content
+    content = response.choices[0].message.content
+    # Qwen3 prepends its chain-of-thought inside <think>…</think> tags.
+    # Strip that block so only the final reply reaches the user.
+    content = re.sub(r"<think>[\s\S]*?</think>", "", content, flags=re.IGNORECASE).strip()
+    return content
 
 def parse_remedy(text: str):
     """
@@ -434,6 +473,16 @@ def amazon_url(query: str) -> str:
     q = query.split("(")[0].strip().replace(" ", "+")
     return f"https://www.amazon.com/s?k={q}&tag=remedyme-20"
 
+def youtube_url(query: str) -> str:
+    """
+    Build a YouTube search URL from an LLM-generated query string.
+
+    The query comes directly from the model's youtube_queries field, so
+    it is already optimised for relevance — we just need to URL-encode it.
+    """
+    import urllib.parse
+    return f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
+
 CARD_META = {
     "topical":    {"icon": "🌿", "label": "Topical Treatments", "category": "Applied to hair & scalp"},
     "nutrition":  {"icon": "🥑", "label": "Nutrition",          "category": "Foods & drinks"},
@@ -441,18 +490,20 @@ CARD_META = {
     "daily_care": {"icon": "✨", "label": "Daily Care",          "category": "Habits & routines"},
 }
 
-def render_remedy_cards(remedy_data: dict, categories: list):
+def render_remedy_cards(remedy_data: dict, categories: list, youtube_queries: list = None):
     """
     Render the remedy plan as a 2-column HTML card grid.
 
     The number of recommendations per card scales down from 3 to 2 when
     more than 2 categories are selected, keeping the layout balanced and
-    avoiding information overload. Amazon links are added only for
-    categories where products are purchasable (topical and vitamins).
+    avoiding information overload. Amazon links are added for topical and
+    vitamins; YouTube tutorial links are added for daily_care items using
+    LLM-generated search queries for maximum relevance.
     """
     n_cats = len(categories)
     # Show fewer items per card when more categories are visible
     n_solutions = 3 if n_cats <= 2 else 2
+    yt_queries = youtube_queries or []
 
     cards_html = '<div class="remedy-grid">'
     for cat in categories:
@@ -461,11 +512,13 @@ def render_remedy_cards(remedy_data: dict, categories: list):
         meta = CARD_META[cat]
         items = remedy_data[cat][:n_solutions]
         items_html = ""
-        for item in items:
-            amazon = amazon_url(item)
+        for i, item in enumerate(items):
             items_html += f'<div class="card-item">{item}'
             if cat in ("topical", "vitamins"):
-                items_html += f' <a href="{amazon}" target="_blank" class="amazon-btn">🛒 Find on Amazon</a>'
+                items_html += f' <a href="{amazon_url(item)}" target="_blank" class="amazon-btn">🛒 Find on Amazon</a>'
+            elif cat == "daily_care" and i < len(yt_queries):
+                yt = youtube_url(yt_queries[i])
+                items_html += f' <a href="{yt}" target="_blank" class="amazon-btn" style="background:#FF0000;">▶ Tutorial</a>'
             items_html += '</div>'
         cards_html += f"""
         <div class="remedy-card">
@@ -490,6 +543,8 @@ if "started" not in st.session_state:
     st.session_state.started = False
 if "chat_input" not in st.session_state:
     st.session_state.chat_input = ""
+if "feedback_submitted" not in st.session_state:
+    st.session_state.feedback_submitted = False
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -567,7 +622,8 @@ with chat_container:
                     """, unsafe_allow_html=True)
                     st.markdown(render_remedy_cards(
                         msg["remedy_data"],
-                        st.session_state.selected_cats
+                        st.session_state.selected_cats,
+                        msg.get("youtube_queries", [])
                     ), unsafe_allow_html=True)
                 elif role == "assistant":
                     st.markdown(f"""
@@ -591,11 +647,37 @@ with chat_container:
 st.markdown("<div style='max-width:760px; margin: 1rem auto 0;'>", unsafe_allow_html=True)
 
 if not st.session_state.started:
+    # ── Sample Q&A expander ──────────────────────────────────────────────────
+    with st.expander("💬 See an example consultation", expanded=False):
+        st.markdown("""
+**What does a session look like?** Remedy asks three short questions and then generates your plan. Here's a real example:
+
+---
+
+🌿 **Remedy:** Hello! I'm Remedy, your personal hair consultant. To start — what's your biggest hair or scalp concern right now?
+
+**You:** My hair has been breaking a lot lately, especially at the ends. It feels really dry and brittle.
+
+🌿 **Remedy:** Thank you for sharing that. Could you tell me a bit about your hair texture and type — for example, is it fine, medium, or thick? And would you say it's straight, wavy, curly, or coily?
+
+**You:** It's medium thickness and quite curly — probably a 3A or 3B curl pattern.
+
+🌿 **Remedy:** Got it! And finally, what's your main goal — are you focused on stopping the breakage, restoring moisture and softness, or something else?
+
+**You:** Restoring moisture and reducing breakage so my curls look healthy again.
+
+🌿 **Remedy:** *(generates your personalised remedy plan across topical treatments, nutrition, vitamins, and daily care — each backed by evidence)*
+
+---
+*Your answers will always produce a plan tailored to your specific concern, texture, and goal — not generic advice.*
+        """)
+
     if st.button("✨ Begin my consultation", use_container_width=True):
         st.session_state.started = True
         opening = "Hello! I'm Remedy, your personal hair consultant. I'll ask you just a few quick questions to build your custom plan. 💆\u200d♀️\n\nTo start — what's your biggest hair or scalp concern right now?"
         st.session_state.messages.append({"role": "assistant", "content": opening})
         st.rerun()
+
 elif st.session_state.remedy is None:
     with st.form(key="chat_form", clear_on_submit=True):
         col1, col2 = st.columns([5, 1])
@@ -619,16 +701,78 @@ elif st.session_state.remedy is None:
                 "role": "assistant",
                 "content": "",
                 "is_remedy": True,
-                "remedy_data": parsed["remedy"]
+                "remedy_data": parsed["remedy"],
+                "youtube_queries": parsed.get("youtube_queries", [])
             })
         else:
             st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
+
 else:
     st.markdown("""
     <div style="text-align:center; padding: 0.5rem; color: #031926; font-size: 0.85rem; font-weight: 500;">
         ✅ Your remedy is ready! Adjust categories in the sidebar to customise your plan.
     </div>
     """, unsafe_allow_html=True)
+
+    # ── Feedback / validation loop ────────────────────────────────────────────
+    if not st.session_state.feedback_submitted:
+        st.markdown("<div style='max-width:760px; margin: 1.5rem auto 0;'>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style='background:#E4F0EF; border-radius:16px; padding:1.2rem 1.5rem; border:1px solid #9DBEBB;'>
+            <div style='font-family:"Cormorant Garamond",serif; font-size:1.15rem; color:#031926; margin-bottom:0.4rem;'>
+                How did we do?
+            </div>
+            <div style='font-size:0.85rem; color:#468189;'>
+                Your feedback helps us understand whether personalised plans work better than generic advice.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        with st.form(key="feedback_form"):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                helpful = st.radio(
+                    "Was the remedy plan helpful?",
+                    options=["Yes", "No"],
+                    horizontal=True,
+                )
+            with col_b:
+                personalised = st.radio(
+                    "Did it feel personalised to you?",
+                    options=["Yes", "No"],
+                    horizontal=True,
+                )
+            comment = st.text_input(
+                "Any other thoughts? (optional)",
+                placeholder="e.g. 'Loved the citations' or 'Wanted more nutrition options'",
+            )
+            fb_submitted = st.form_submit_button("Submit feedback →", use_container_width=True)
+
+        if fb_submitted:
+            profile = {
+                "texture": st.session_state.remedy.get("texture", ""),
+                "concern": st.session_state.remedy.get("concern", ""),
+                "goal": st.session_state.remedy.get("goal", ""),
+            }
+            log_feedback(
+                helpful=(helpful == "Yes"),
+                personalised=(personalised == "Yes"),
+                comment=comment,
+                profile=profile,
+            )
+            st.session_state.feedback_submitted = True
+            st.rerun()
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    else:
+        st.markdown("""
+        <div style='max-width:760px; margin: 1rem auto 0; background:#E4F0EF; border-radius:16px;
+                    padding:1rem 1.5rem; border:1px solid #9DBEBB; text-align:center;
+                    font-size:0.9rem; color:#031926;'>
+            Thank you for your feedback — it helps us improve every plan. 🌿
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
