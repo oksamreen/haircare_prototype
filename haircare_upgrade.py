@@ -15,7 +15,9 @@ import re        # for extracting JSON from free-text LLM responses
 import time      # reserved for future streaming / typing-delay effects
 import os        # for feedback log path resolution
 import requests  # for Spoonacular recipe API calls
+import html      # for escaping remedy text before inserting into HTML cards
 from datetime import datetime, timezone  # for timestamping feedback entries
+from fpdf import FPDF  # for PDF remedy plan export
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Remedy Me", page_icon="🌿", layout="wide")
@@ -296,6 +298,21 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"],
 }
 .stFormSubmitButton > button:hover { opacity: 0.88 !important; }
 
+/* Download button */
+[data-testid="stDownloadButton"] > button {
+    background: linear-gradient(135deg, var(--terracotta), var(--mid)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 50px !important;
+    padding: 0.6rem 1.6rem !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.03em !important;
+    transition: opacity 0.2s !important;
+}
+[data-testid="stDownloadButton"] > button:hover { opacity: 0.88 !important; }
+
 /* ── Category selector ── */
 .stMultiSelect > div { 
     border-radius: 12px !important;
@@ -391,7 +408,7 @@ USER PROFILE:
 - Hair texture/type: {texture}
 - Primary goal: {goal}
 
-Output ONLY a valid JSON object in this exact format (no other text):
+Output ONLY a valid JSON object. You MUST populate all five keys — do not omit or leave any key empty:
 {{
   "topical": ["remedy 1 [Author, Year — finding]", "remedy 2 [Author, Year — finding]", "remedy 3 [Author, Year — finding]"],
   "nutrition": ["food 1 [Author, Year — finding]", "food 2 [Author, Year — finding]", "food 3 [Author, Year — finding]"],
@@ -400,8 +417,10 @@ Output ONLY a valid JSON object in this exact format (no other text):
   "youtube_queries": ["specific YouTube search query for habit 1", "specific YouTube search query for habit 2", "specific YouTube search query for habit 3"]
 }}
 
+IMPORTANT: All four remedy arrays (topical, nutrition, vitamins, daily_care) must each contain exactly 3 items. Never output an empty array.
+
 Rules:
-- Every recommendation must cite evidence from the provided knowledge base using [Author, Year — one-line finding]
+- Where the knowledge base contains a relevant reference, cite it using [Author, Year — one-line finding]. If no specific evidence is available for a recommendation, omit the brackets entirely — do not write placeholder text like "no specific evidence" or "general knowledge".
 - Each item must be specific and actionable (e.g. "Rosemary oil scalp massage 3×/week" not just "rosemary")
 - Match all recommendations to the user's specific texture, concern and goal
 - Topical: product types or DIY treatments applied to hair/scalp
@@ -491,8 +510,9 @@ def format_context(chunks: list) -> str:
 def generate_remedy_from_chunks(concern: str, texture: str, goal: str, chunks: list) -> dict | None:
     """
     Phase 2b — LLM call with pre-retrieved knowledge chunks injected as context.
-    Separated from retrieval so the caller can show step-by-step progress.
-    Returns the parsed remedy dict, or None if JSON parsing fails.
+    Uses Llama 3.3 70B for reliable structured JSON output (Qwen3's reasoning
+    mode caused consistent parse failures in this structured generation task).
+    Returns the parsed remedy dict, or None if parsing fails.
     """
     context = format_context(chunks)
     prompt  = REMEDY_PROMPT_TEMPLATE.format(
@@ -502,14 +522,19 @@ def generate_remedy_from_chunks(concern: str, texture: str, goal: str, chunks: l
         goal=goal,
     )
     client = get_groq_client()
-    response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.6,
-    )
-    content = response.choices[0].message.content
-    content = re.sub(r"<think>[\s\S]*?</think>", "", content, flags=re.IGNORECASE).strip()
-    return parse_remedy(content)
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.6,
+        )
+        content = response.choices[0].message.content
+        # Strip any stray think blocks just in case
+        content = re.sub(r"<think>[\s\S]*?</think>", "", content, flags=re.IGNORECASE).strip()
+        return parse_remedy(content)
+    except Exception as e:
+        st.error(f"Could not generate remedy: {e}")
+        return None
 
 def log_feedback(helpful: bool, personalised: bool, comment: str, profile: dict):
     """
@@ -582,12 +607,13 @@ def amazon_url(query: str) -> str:
     """
     Build an Amazon search URL for a given remedy item.
 
-    Parenthetical details (e.g. dosage hints like "Biotin (5000mcg)")
-    are stripped before encoding so the search stays broad enough to
-    return relevant product results.
+    Strips citation brackets [...] and parenthetical dosage hints (...)
+    before URL-encoding so the search is clean and the href is valid HTML.
     """
-    q = query.split("(")[0].strip().replace(" ", "+")
-    return f"https://www.amazon.com/s?k={q}&tag=remedyme-20"
+    import urllib.parse
+    q = re.sub(r'\[.*?\]', '', query)   # strip [citation]
+    q = q.split("(")[0].strip()         # strip (dosage hint)
+    return f"https://www.amazon.com/s?k={urllib.parse.quote_plus(q)}&tag=remedyme-20"
 
 def youtube_url(query: str) -> str:
     """
@@ -611,6 +637,7 @@ def fetch_nutrition_recipes(nutrition_items: list) -> dict:
     """
     api_key = st.secrets.get("SPOONACULAR_API_KEY", "")
     if not api_key:
+        st.warning("No SPOONACULAR_API_KEY found — recipe links will not appear.")
         return {}
 
     results = {}
@@ -635,6 +662,116 @@ def fetch_nutrition_recipes(nutrition_items: list) -> dict:
             pass  # silently skip — recipe button simply won't appear for this item
     return results
 
+def generate_remedy_pdf(profile: dict, remedy_data: dict) -> bytes:
+    """
+    Generate a formatted PDF of the user's remedy plan.
+
+    Uses latin-1 encoding (FPDF default) so all unicode characters are
+    sanitised before being written — em dashes, citation brackets, etc.
+    Returns the PDF as raw bytes for use with st.download_button.
+    """
+
+    def clean(text: str) -> str:
+        """Sanitise text to latin-1, replacing unsupported characters."""
+        replacements = {
+            "\u2014": "--", "\u2013": "-", "\u00d7": "x", "\u2019": "'",
+            "\u2018": "'", "\u201c": '"', "\u201d": '"', "\u2026": "...",
+            "\u00b0": " deg", "\u03b1": "alpha", "\u00b5": "u",
+            "\u00a0": " ", "\u2212": "-", "\u00bd": "1/2",
+            "\u2265": ">=", "\u2264": "<=", "\u00b1": "+/-",
+            "\u00e9": "e", "\u00e8": "e", "\u00ea": "e", "\u00eb": "e",
+            "\u00e0": "a", "\u00e2": "a", "\u00e4": "a",
+            "\u00f6": "o", "\u00f4": "o", "\u00fc": "u", "\u00fb": "u",
+            "\u00f9": "u", "\u00e7": "c", "\u00ef": "i", "\u00ee": "i",
+            "\u00ab": "<<", "\u00bb": ">>",
+        }
+        for char, rep in replacements.items():
+            text = text.replace(char, rep)
+        return text.encode("latin-1", errors="replace").decode("latin-1")
+
+    pdf = FPDF()
+    pdf.set_margins(20, 20, 20)
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=25)
+
+    # ── Header ────────────────────────────────────────────────────────────────
+    pdf.set_font("Helvetica", "B", 26)
+    pdf.set_text_color(3, 25, 38)
+    pdf.cell(0, 12, "Remedy Me", ln=True, align="C")
+
+    pdf.set_font("Helvetica", "I", 11)
+    pdf.set_text_color(70, 129, 137)
+    pdf.cell(0, 7, "Your Personalised Hair Care Plan", ln=True, align="C")
+    pdf.ln(4)
+
+    pdf.set_draw_color(157, 190, 187)
+    pdf.line(20, pdf.get_y(), 190, pdf.get_y())
+    pdf.ln(8)
+
+    # ── Hair profile ──────────────────────────────────────────────────────────
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(70, 129, 137)
+    pdf.cell(0, 6, "HAIR PROFILE", ln=True)
+    pdf.ln(2)
+
+    for label, key in [("Concern", "concern"), ("Texture", "texture"), ("Goal", "goal")]:
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(3, 25, 38)
+        pdf.cell(28, 7, f"{label}:", ln=False)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 7, clean(profile.get(key, "").capitalize()), ln=True)
+
+    pdf.ln(4)
+    pdf.line(20, pdf.get_y(), 190, pdf.get_y())
+    pdf.ln(8)
+
+    # ── Remedy categories ─────────────────────────────────────────────────────
+    cat_meta = {
+        "topical":    ("Topical Treatments",      "Applied to hair & scalp"),
+        "nutrition":  ("Nutrition",               "Foods & drinks"),
+        "vitamins":   ("Vitamins & Supplements",  "Ingestibles"),
+        "daily_care": ("Daily Care",              "Habits & routines"),
+    }
+
+    for cat, (title, subtitle) in cat_meta.items():
+        items = remedy_data.get(cat, [])
+        if not items:
+            continue
+
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.set_text_color(3, 25, 38)
+        pdf.cell(0, 8, clean(title), ln=True)
+
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.set_text_color(119, 172, 162)
+        pdf.cell(0, 5, clean(subtitle), ln=True)
+        pdf.ln(2)
+
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(3, 25, 38)
+        for item in items[:3]:
+            pdf.set_x(25)
+            pdf.multi_cell(0, 6, clean(f"- {item}"))
+            pdf.ln(1)
+
+        pdf.ln(4)
+
+    # ── Footer ────────────────────────────────────────────────────────────────
+    pdf.set_y(-22)
+    pdf.set_draw_color(157, 190, 187)
+    pdf.line(20, pdf.get_y(), 190, pdf.get_y())
+    pdf.ln(3)
+    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_text_color(119, 172, 162)
+    pdf.multi_cell(
+        0, 5,
+        "Remedy Me uses AI to generate personalised suggestions. "
+        "Always consult a trichologist for medical concerns.",
+        align="C"
+    )
+
+    return bytes(pdf.output())
+
 CARD_META = {
     "topical":    {"icon": "🌿", "label": "Topical Treatments", "category": "Applied to hair & scalp"},
     "nutrition":  {"icon": "🥑", "label": "Nutrition",          "category": "Foods & drinks"},
@@ -644,47 +781,69 @@ CARD_META = {
 
 def render_remedy_cards(remedy_data: dict, categories: list, youtube_queries: list = None, recipe_links: dict = None):
     """
-    Render the remedy plan as a 2-column HTML card grid.
+    Render the remedy plan using Streamlit native columns and link_button.
 
-    The number of recommendations per card scales down from 3 to 2 when
-    more than 2 categories are selected, keeping the layout balanced and
-    avoiding information overload. Amazon links are added for topical and
-    vitamins; YouTube tutorial links are added for daily_care items using
-    LLM-generated search queries for maximum relevance.
+    Replaced raw HTML card grid with native components to avoid HTML injection
+    issues caused by citation text (brackets, em dashes, special chars) breaking
+    the href attributes and div structure when inserted via f-strings.
     """
     n_cats = len(categories)
-    # Show fewer items per card when more categories are visible
     n_solutions = 3 if n_cats <= 2 else 2
     yt_queries = youtube_queries or []
     recipes = recipe_links or {}
 
-    cards_html = '<div class="remedy-grid">'
-    for cat in categories:
-        if cat not in remedy_data or cat not in CARD_META:
-            continue
-        meta = CARD_META[cat]
-        items = remedy_data[cat][:n_solutions]
-        items_html = ""
-        for i, item in enumerate(items):
-            items_html += f'<div class="card-item">{item}'
-            if cat in ("topical", "vitamins"):
-                items_html += f' <a href="{amazon_url(item)}" target="_blank" class="amazon-btn">🛒 Find on Amazon</a>'
-            elif cat == "daily_care" and i < len(yt_queries):
-                yt = youtube_url(yt_queries[i])
-                items_html += f' <a href="{yt}" target="_blank" class="amazon-btn" style="background:#FF0000;">▶ Tutorial</a>'
-            elif cat == "nutrition" and i in recipes:
-                title, url = recipes[i]
-                items_html += f' <a href="{url}" target="_blank" class="amazon-btn" style="background:#2E7D32;">🍽 Recipe</a>'
-            items_html += '</div>'
-        cards_html += f"""
-        <div class="remedy-card">
-            <div class="card-icon">{meta["icon"]}</div>
-            <div class="card-category">{meta["category"]}</div>
-            <div class="card-title">{meta["label"]}</div>
-            {items_html}
-        </div>"""
-    cards_html += '</div>'
-    return cards_html
+    active_cats = [c for c in categories if c in CARD_META and remedy_data.get(c)]
+    if not active_cats:
+        return
+
+    # Render cards two per row using st.columns for layout,
+    # but each card's content (header + items + citations) is one isolated
+    # st.markdown call so citation text can't break neighbouring cards.
+    for row_start in range(0, len(active_cats), 2):
+        row_cats = active_cats[row_start:row_start + 2]
+        cols = st.columns(len(row_cats))
+        for col, cat in zip(cols, row_cats):
+            meta  = CARD_META[cat]
+            items = remedy_data[cat][:n_solutions]
+            with col:
+                # Build the full card HTML — header + items + citations + buttons
+                # in one single st.markdown call so everything sits inside the box.
+                # Text is html.escaped and URLs are urllib-encoded so citations
+                # (brackets, em dashes) can't break the HTML structure.
+                items_html = ""
+                for i, item in enumerate(items):
+                    if "[" in item:
+                        rec  = html.escape(item[:item.index("[")].strip())
+                        cite = html.escape(item[item.index("["):])
+                    else:
+                        rec, cite = html.escape(item), ""
+
+                    # Suppress placeholder citations the LLM occasionally generates
+                    no_evidence = any(p in cite.lower() for p in ["no specific evidence", "general knowledge", "no specific author"])
+                    cite_html = (f'<div style="font-size:0.72rem;color:#77ACA2;'
+                                 f'font-style:italic;margin:2px 0 6px 0;">{cite}</div>') if (cite and not no_evidence) else ""
+
+                    if cat in ("topical", "vitamins"):
+                        btn = f'<a href="{amazon_url(item)}" target="_blank" class="amazon-btn">🛒 Find on Amazon</a>'
+                    elif cat == "daily_care" and i < len(yt_queries):
+                        btn = f'<a href="{youtube_url(yt_queries[i])}" target="_blank" class="amazon-btn" style="background:#FF0000;">▶ Tutorial</a>'
+                    elif cat == "nutrition" and i in recipes:
+                        _, url = recipes[i]
+                        btn = f'<a href="{url}" target="_blank" class="amazon-btn" style="background:#2E7D32;">🍽 Recipe</a>'
+                    else:
+                        btn = ""
+
+                    items_html += (
+                        f'<div class="card-item">{rec}{cite_html}{btn}</div>'
+                    )
+
+                st.markdown(f"""
+                <div class="remedy-card">
+                    <div class="card-icon">{meta["icon"]}</div>
+                    <div class="card-category">{meta["category"]}</div>
+                    <div class="card-title">{meta["label"]}</div>
+                    {items_html}
+                </div>""", unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────────────────────
 # Streamlit reruns the entire script on each interaction, so all mutable
@@ -776,12 +935,12 @@ with chat_container:
                         <div class="bubble ai">Here is your personalised remedy plan! ✨</div>
                     </div>
                     """, unsafe_allow_html=True)
-                    st.markdown(render_remedy_cards(
+                    render_remedy_cards(
                         msg["remedy_data"],
                         st.session_state.selected_cats,
                         msg.get("youtube_queries", []),
                         msg.get("recipe_links", {})
-                    ), unsafe_allow_html=True)
+                    )
                 elif role == "assistant":
                     st.markdown(f"""
                     <div class="msg-row">
@@ -908,6 +1067,21 @@ else:
         ✅ Your remedy is ready! Adjust categories in the sidebar to customise your plan.
     </div>
     """, unsafe_allow_html=True)
+
+    # ── PDF export ────────────────────────────────────────────────────────────
+    remedy = st.session_state.remedy
+    if remedy and remedy.get("remedy"):
+        pdf_bytes = generate_remedy_pdf(
+            profile=remedy,
+            remedy_data=remedy["remedy"],
+        )
+        st.download_button(
+            label="⬇ Download my plan as PDF",
+            data=pdf_bytes,
+            file_name="remedy_me_plan.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
 
     # ── Feedback / validation loop ────────────────────────────────────────────
     if not st.session_state.feedback_submitted:
