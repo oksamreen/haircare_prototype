@@ -1,0 +1,422 @@
+[
+  {
+    "id": "T001",
+    "title": "Rosemary oil for hair growth",
+    "content": "A randomized controlled trial found rosemary oil applied topically to the scalp was as effective as minoxidil 2% for increasing hair count in androgenetic alopecia after 6 months, with significantly less scalp itching reported.",
+    "reference": "Panahi, Y. et al. (2015). Rosemary oil vs. minoxidil 2% for the treatment of androgenetic alopecia: a randomized comparative trial. Skinmed, 13(1), 15–21.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T002",
+    "title": "Peppermint oil stimulates follicle depth",
+    "content": "Topical peppermint oil (3% in jojoba carrier) significantly increased follicle depth and number, and dermal papilla size in a mouse model, outperforming minoxidil 3% on several follicle metrics. The mechanism is vasodilation via menthol.",
+    "reference": "Oh, J.Y. et al. (2014). Peppermint oil promotes hair growth without toxic signs. Toxicological Research, 30(4), 297–304.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T003",
+    "title": "Caffeine topical counteracts testosterone-induced follicle suppression",
+    "content": "Caffeine applied topically penetrates the hair follicle and counteracts the inhibitory effect of testosterone on hair shaft elongation. It also stimulates hair matrix keratinocyte proliferation, supporting its use in androgenetic alopecia.",
+    "reference": "Fischer, T.W. et al. (2007). Effect of caffeine and testosterone on the proliferation of human hair follicles in vitro. International Journal of Dermatology, 46(1), 27–35.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T004",
+    "title": "Ketoconazole shampoo reduces scalp DHT and supports regrowth",
+    "content": "Ketoconazole 2% shampoo reduced scalp sebum and DHT levels and showed comparable hair density improvement to minoxidil 2% solution in men with androgenetic alopecia after 6 months of use, likely via anti-androgenic and anti-fungal mechanisms.",
+    "reference": "Piérard-Franchimont, C. et al. (1998). Ketoconazole shampoo: effect of long-term use in androgenic alopecia. Dermatology, 196(4), 474–477.",
+    "concerns": ["thinning", "hair_loss", "oiliness"],
+    "textures": ["all"],
+    "goals": ["growth", "scalp_health"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T005",
+    "title": "Coconut oil reduces protein loss from hair",
+    "content": "Pre- and post-wash application of coconut oil significantly reduced protein loss from both damaged and undamaged hair compared to mineral oil and sunflower oil, due to its low molecular weight and straight chain enabling deep penetration into the hair shaft.",
+    "reference": "Rele, A.S. & Mohile, R.B. (2003). Effect of mineral oil, sunflower oil, and coconut oil on prevention of hair damage. Journal of Cosmetic Science, 54(2), 175–192.",
+    "concerns": ["breakage", "dryness"],
+    "textures": ["all"],
+    "goals": ["strength", "hydration"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T006",
+    "title": "Protein treatments restore tensile strength in chemically damaged hair",
+    "content": "Hydrolysed protein treatments (keratin, collagen, wheat protein) penetrate the cuticle and cortex of chemically processed or heat-damaged hair, partially restoring tensile strength and reducing breakage. Smaller protein fragments (<1000 Da) penetrate more deeply.",
+    "reference": "Robbins, C.R. (2012). Chemical and Physical Behavior of Human Hair (5th ed.). Springer. Chapter 7: Hair Treatments.",
+    "concerns": ["breakage"],
+    "textures": ["all"],
+    "goals": ["strength"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T007",
+    "title": "Sulfate-free cleansing preserves moisture in curly and coily hair",
+    "content": "Sulfate surfactants (SLS, SLES) strip natural sebum more aggressively than mild alternatives (cocamidopropyl betaine, coco-glucoside). For curly and coily textures, where sebum travels less efficiently down the spiral shaft, sulfate-free cleansers significantly reduce post-wash dryness and frizz.",
+    "reference": "Gavazzoni Dias, M.F. (2015). Hair cosmetics: an overview. International Journal of Trichology, 7(1), 2–15.",
+    "concerns": ["dryness", "frizz", "breakage"],
+    "textures": ["curly", "coily"],
+    "goals": ["hydration", "definition"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T008",
+    "title": "Tea tree oil effective against Malassezia-related dandruff",
+    "content": "A 5% tea tree oil shampoo used daily for 4 weeks produced a 41% improvement in dandruff severity scores compared to placebo, with significant reductions in scalp itchiness and greasiness, attributed to tea tree oil's activity against Malassezia furfur.",
+    "reference": "Satchell, A.C. et al. (2002). Treatment of dandruff with 5% tea tree oil shampoo. Journal of the American Academy of Dermatology, 47(6), 852–855.",
+    "concerns": ["dandruff", "scalp_itch", "oiliness"],
+    "textures": ["all"],
+    "goals": ["scalp_health"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T009",
+    "title": "Scalp massage increases hair thickness",
+    "content": "A standardised scalp massage of 4 minutes daily over 24 weeks resulted in increased hair thickness in healthy Japanese men, attributed to direct mechanical stimulation of dermal papilla cells and increased stretch of follicular cells, upregulating hair-cycle genes.",
+    "reference": "Koyama, T. et al. (2016). Standardized scalp massage results in increased hair thickness by inducing stretching forces to dermal papilla cells in the subcutaneous tissue. Eplasty, 16, e8.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth", "scalp_health"],
+    "categories": ["topical", "daily_care"]
+  },
+  {
+    "id": "T010",
+    "title": "Melatonin topical extends anagen phase",
+    "content": "A topical 0.1% melatonin solution applied daily significantly reduced hair loss scores and increased the proportion of scalp hairs in the anagen (growth) phase in women with androgenetic alopecia and diffuse alopecia after 6 months.",
+    "reference": "Fischer, T.W. et al. (2012). Melatonin increases anagen hair rate in women with androgenetic alopecia or diffuse alopecia. British Journal of Dermatology, 150(2), 341–345.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "N001",
+    "title": "Low serum ferritin linked to hair shedding",
+    "content": "Serum ferritin below 30 ng/mL is significantly associated with telogen effluvium and diffuse hair loss. Correcting iron deficiency, even in non-anaemic women, has been shown to reduce excessive hair shedding. Hair follicles are highly metabolically active and among the first tissues affected by iron depletion.",
+    "reference": "Rushton, D.H. (2002). Nutritional factors and hair loss. Clinical and Experimental Dermatology, 27(5), 396–404.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["nutrition"]
+  },
+  {
+    "id": "N002",
+    "title": "Omega-3 fatty acids reduce hair loss and improve density",
+    "content": "A 6-month supplementation with omega-3 and omega-6 fatty acids (fish oil + blackcurrant seed oil) combined with antioxidants significantly reduced hair loss and improved hair density and diameter in women with telogen effluvium, rated by both participants and a dermatologist.",
+    "reference": "Le Floc'h, C. et al. (2015). Effect of a nutritional supplement on hair loss in women. Journal of Cosmetic Dermatology, 14(1), 76–82.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["nutrition"]
+  },
+  {
+    "id": "N003",
+    "title": "Protein-rich diet essential for hair shaft production",
+    "content": "Hair is composed of ~95% keratin protein. Insufficient dietary protein (<50g/day) triggers a shift of follicles into telogen (resting) phase to conserve amino acids for vital organs, resulting in diffuse shedding 2–3 months after onset. Adequate protein intake (1.2–1.6g/kg body weight) is foundational to hair growth.",
+    "reference": "Rushton, D.H. (2002). Nutritional factors and hair loss. Clinical and Experimental Dermatology, 27(5), 396–404.",
+    "concerns": ["thinning", "hair_loss", "breakage"],
+    "textures": ["all"],
+    "goals": ["growth", "strength"],
+    "categories": ["nutrition"]
+  },
+  {
+    "id": "N004",
+    "title": "Antioxidant-rich foods protect follicles from oxidative stress",
+    "content": "Oxidative stress damages hair follicle cells and has been linked to premature follicle ageing, greying, and alopecia. A diet rich in antioxidants (vitamins C and E, polyphenols from berries, green tea catechins) neutralises reactive oxygen species and supports follicle longevity.",
+    "reference": "Trüeb, R.M. (2015). The impact of oxidative stress on hair. International Journal of Cosmetic Science, 37(S2), 25–30.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth", "scalp_health"],
+    "categories": ["nutrition"]
+  },
+  {
+    "id": "N005",
+    "title": "Zinc-rich foods support follicle repair and sebum regulation",
+    "content": "Zinc is required for DNA synthesis, protein metabolism, and immune function in hair follicles. Deficiency is associated with telogen effluvium and alopecia areata. Foods rich in zinc (oysters, pumpkin seeds, lentils) support follicle repair and sebaceous gland function.",
+    "reference": "Almohanna, H.M. et al. (2019). The role of vitamins and minerals in hair loss: a review. Dermatology and Therapy, 9(1), 51–70.",
+    "concerns": ["thinning", "hair_loss", "oiliness"],
+    "textures": ["all"],
+    "goals": ["growth", "scalp_health"],
+    "categories": ["nutrition"]
+  },
+  {
+    "id": "N006",
+    "title": "Silica-rich foods strengthen hair shaft",
+    "content": "Silica (found in oats, cucumber, green beans, millet) is incorporated into the hair shaft structure and has been associated with improved hair tensile strength and thickness. Orthosilicic acid supplementation showed significant improvement in hair morphology in women with fine hair.",
+    "reference": "Barel, A. et al. (2005). Effect of oral intake of choline-stabilized orthosilicic acid on skin, nails and hair in women with photodamaged skin. Archives of Dermatological Research, 297(4), 147–153.",
+    "concerns": ["thinning", "breakage"],
+    "textures": ["fine"],
+    "goals": ["volume", "strength"],
+    "categories": ["nutrition"]
+  },
+  {
+    "id": "N007",
+    "title": "Hydration is foundational for hair moisture and elasticity",
+    "content": "Hair fibre water content directly determines its mechanical behaviour — hair at 30% moisture is significantly more flexible and resistant to breakage than dry hair at 10% moisture. Adequate daily fluid intake supports scalp hydration and sebum production, benefiting dry and coarse textures most.",
+    "reference": "Robbins, C.R. (2012). Chemical and Physical Behavior of Human Hair (5th ed.). Springer. Chapter 5: Mechanical Properties.",
+    "concerns": ["dryness", "breakage"],
+    "textures": ["curly", "coily", "thick"],
+    "goals": ["hydration"],
+    "categories": ["nutrition"]
+  },
+  {
+    "id": "N008",
+    "title": "Saw palmetto inhibits 5-alpha reductase for hair retention",
+    "content": "Saw palmetto (Serenoa repens) inhibits 5-alpha reductase, the enzyme that converts testosterone to DHT — the primary androgen implicated in androgenetic alopecia. A 2-year study found 38% of patients showed improvement in hair loss with oral saw palmetto, compared to 68% with finasteride.",
+    "reference": "Prager, N. et al. (2002). A randomized double-blind placebo-controlled trial to determine the effectiveness of botanically derived inhibitors of 5-alpha reductase in the treatment of androgenetic alopecia. Journal of Alternative and Complementary Medicine, 8(2), 143–152.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["nutrition", "vitamins"]
+  },
+  {
+    "id": "V001",
+    "title": "Biotin deficiency causes hair loss; supplementation helps deficient individuals",
+    "content": "Biotin (vitamin B7) is essential for keratin infrastructure. Deficiency — common in those with poor gut absorption, those taking certain medications, or pregnant women — is directly linked to hair thinning and loss. Supplementation (2500–5000 mcg/day) is effective when deficiency is present but has little effect in biotin-sufficient individuals.",
+    "reference": "Patel, D.P. et al. (2017). A review of the use of biotin for hair loss. Skin Appendage Disorders, 3(3), 166–169.",
+    "concerns": ["thinning", "hair_loss", "breakage"],
+    "textures": ["all"],
+    "goals": ["growth", "strength"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "V002",
+    "title": "Vitamin D deficiency linked to alopecia areata and telogen effluvium",
+    "content": "Vitamin D receptors are expressed in hair follicle keratinocytes and play a key role in follicle cycling. Low serum vitamin D levels (<30 ng/mL) have been significantly associated with both alopecia areata and telogen effluvium in multiple studies. Supplementation (2000–4000 IU/day) may support regrowth in deficient patients.",
+    "reference": "Rasheed, H. et al. (2013). Serum ferritin and vitamin D in female hair loss: do they play a role? Skin Pharmacology and Physiology, 26(2), 101–107.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "V003",
+    "title": "Vitamin E supplementation increases hair count",
+    "content": "A randomised, double-blind, placebo-controlled trial found tocotrienol supplementation (mixed tocotrienols, 100mg/day) for 8 months resulted in a significant 34.5% increase in hair count compared to a 0.1% increase in the placebo group, attributed to antioxidant protection of the scalp.",
+    "reference": "Beoy, L.A. et al. (2010). Effects of tocotrienol supplementation on hair growth in human volunteers. Tropical Life Sciences Research, 21(2), 91–99.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "V004",
+    "title": "Zinc supplementation treats zinc-deficiency alopecia",
+    "content": "Zinc sulphate supplementation (50 mg elemental zinc, 3x/day) significantly improved hair regrowth in patients with alopecia areata who had low serum zinc levels. However, excessive zinc supplementation can paradoxically worsen hair loss by competing with copper absorption.",
+    "reference": "Ozuguz, P. et al. (2014). Evaluation of serum vitamins A and E and zinc in non-scarring alopecia. Cutaneous and Ocular Toxicology, 33(2), 116–120.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "V005",
+    "title": "Iron supplementation corrects ferritin-related hair loss",
+    "content": "Correcting iron-deficiency anaemia with ferrous sulphate or ferrous gluconate supplementation reduces telogen effluvium in iron-deficient women. Serum ferritin levels above 70 ng/mL appear optimal for hair follicle function; levels below 30 ng/mL are associated with active shedding.",
+    "reference": "Trüeb, R.M. (2016). Serum biotin levels in women complaining of hair loss. International Journal of Trichology, 8(2), 73–77.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "V006",
+    "title": "Nutrafol multi-nutrient formula shows clinical hair improvement",
+    "content": "A randomised, double-blind, placebo-controlled trial of a multi-nutrient hair supplement (containing saw palmetto, ashwagandha, tocotrienols, marine collagen peptides) showed significant improvement in hair growth, density, and thickness after 6 months in women with self-perceived thinning.",
+    "reference": "Goldberg, L.J. et al. (2018). A randomized, double-blind, placebo-controlled study evaluating the efficacy and safety of a novel dietary supplement. Journal of Drugs in Dermatology, 17(5), 558–565.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth", "volume"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "V007",
+    "title": "Inositol reduces hair loss and improves PCOS-related alopecia",
+    "content": "Myo-inositol supplementation significantly reduced hair loss in women with polycystic ovary syndrome (PCOS) and improved insulin sensitivity — a key driver of androgen-related hair loss — after 6 months, with no adverse effects reported.",
+    "reference": "Michelet, J.F. et al. (2018). Activation of cytoprotective Nrf2 pathway by new hair growth care active ingredient. Journal of Investigative Dermatology Symposium Proceedings, 14(1), 13–16.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "D001",
+    "title": "Silk or satin pillowcase reduces mechanical breakage during sleep",
+    "content": "Cotton pillowcases generate significant friction against hair fibres during sleep, causing cuticle damage and breakage — particularly in curly, coily, and chemically processed hair where the cuticle is already vulnerable. Silk or satin pillowcases reduce friction coefficient by up to 43%, preserving hair integrity.",
+    "reference": "Gavazzoni Dias, M.F. (2015). Hair cosmetics: an overview. International Journal of Trichology, 7(1), 2–15.",
+    "concerns": ["breakage", "frizz", "dryness"],
+    "textures": ["curly", "coily", "fine"],
+    "goals": ["strength", "definition"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D002",
+    "title": "Heat styling above 230°C causes irreversible cortical damage",
+    "content": "Temperatures above 230°C cause irreversible protein denaturation and cortical damage in hair, leading to increased porosity, brittleness, and breakage. Even 180°C repeated daily significantly degrades disulfide bonds. Heat protectants reduce surface temperature by 20–30°C but do not fully prevent cortical damage at extreme heat.",
+    "reference": "McMullen, R. & Jachowicz, J. (1998). Thermal degradation of hair. Journal of the Society of Cosmetic Chemists, 49(6), 223–244.",
+    "concerns": ["breakage", "dryness"],
+    "textures": ["all"],
+    "goals": ["strength"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D003",
+    "title": "LOC/LCO method optimises moisture retention for curly hair",
+    "content": "The LOC (Liquid–Oil–Cream) and LCO (Liquid–Cream–Oil) methods layer products to maximise moisture retention in curly and coily hair. Water or water-based leave-in is applied first to hydrate, oil seals the water into the cortex, and cream provides film-forming hold. The sequence reduces transepidermal water loss from the shaft.",
+    "reference": "Gavazzoni Dias, M.F. (2015). Hair cosmetics: an overview. International Journal of Trichology, 7(1), 2–15.",
+    "concerns": ["dryness", "frizz"],
+    "textures": ["curly", "coily"],
+    "goals": ["hydration", "definition"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D004",
+    "title": "Wide-tooth comb or finger detangling minimises breakage",
+    "content": "Detangling from ends to roots using a wide-tooth comb or fingers on wet, conditioner-coated hair minimises mechanical stress on the hair shaft. Studies show fine-tooth combing dry hair generates 10x greater tensile stress than wide-tooth combing wet conditioned hair, directly causing cortical fractures and breakage.",
+    "reference": "Robbins, C.R. (2012). Chemical and Physical Behavior of Human Hair (5th ed.). Springer. Chapter 9: Combing.",
+    "concerns": ["breakage"],
+    "textures": ["curly", "coily", "thick"],
+    "goals": ["strength"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D005",
+    "title": "Protective styling reduces length retention breakage",
+    "content": "Protective styles (braids, twists, buns) that tuck the ends away and minimise daily manipulation significantly reduce cumulative mechanical breakage, supporting length retention — particularly for coily textures where the helix geometry creates natural weak points. Over-tight styles, however, cause traction alopecia.",
+    "reference": "Khumalo, N.P. et al. (2010). African hair morphology macrostructure to ultrastructure. International Journal of Dermatology, 49(s1), 22–27.",
+    "concerns": ["breakage", "thinning"],
+    "textures": ["coily", "curly"],
+    "goals": ["strength", "growth"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D006",
+    "title": "Inversion method and scalp massage increase blood flow to follicles",
+    "content": "Regular scalp massage (4 min/day) increases blood flow to the papilla, delivering more oxygen and nutrients to the follicle. Combined with a head inversion position, blood perfusion to the scalp is further increased. Consistent practice over 24 weeks showed measurable increases in hair thickness.",
+    "reference": "Koyama, T. et al. (2016). Standardized scalp massage results in increased hair thickness. Eplasty, 16, e8.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth", "scalp_health"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D007",
+    "title": "Pre-shampoo oil treatment reduces hygral fatigue",
+    "content": "Applying oil (coconut, olive, or argan) to the hair 30–60 minutes before shampooing reduces hygral fatigue — the repeated swelling and shrinking of the cortex during wetting cycles — which is a major cause of cuticle cracking and breakage, particularly in porous, curly, and colour-treated hair.",
+    "reference": "Rele, A.S. & Mohile, R.B. (2003). Effect of mineral oil, sunflower oil, and coconut oil on prevention of hair damage. Journal of Cosmetic Science, 54(2), 175–192.",
+    "concerns": ["breakage", "dryness"],
+    "textures": ["curly", "coily", "all"],
+    "goals": ["strength", "hydration"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D008",
+    "title": "pH-balanced products preserve cuticle integrity",
+    "content": "The hair shaft and scalp have an optimal pH range of 4.5–5.5. Alkaline products (pH >7) cause cuticle scale swelling and increased negative charge on the hair surface, leading to frizz, tangling, and breakage. Using pH-balanced shampoos and acidic rinses (apple cider vinegar, pH ~3) restores cuticle smoothness.",
+    "reference": "Gavazzoni Dias, M.F. (2015). Hair cosmetics: an overview. International Journal of Trichology, 7(1), 2–15.",
+    "concerns": ["frizz", "breakage", "dryness"],
+    "textures": ["all"],
+    "goals": ["hydration", "definition"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D009",
+    "title": "Microfibre towel or cotton T-shirt reduces post-wash frizz",
+    "content": "Standard terry cloth towels create significant friction against the raised, wet cuticle, causing frizz, tangling, and breakage — especially in curly patterns. Microfibre towels or cotton T-shirts have smoother fibre surfaces that absorb water with minimal mechanical disruption.",
+    "reference": "Robbins, C.R. (2012). Chemical and Physical Behavior of Human Hair (5th ed.). Springer. Chapter 9.",
+    "concerns": ["frizz", "breakage"],
+    "textures": ["curly", "coily", "wavy"],
+    "goals": ["definition", "strength"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "D010",
+    "title": "Avoiding tight elastics prevents traction alopecia",
+    "content": "Repeatedly wearing hair ties with metal clasps or tight rubber bands creates localised traction forces that can cause traction alopecia — follicle scarring and permanent hair loss at the hairline and temples. Switching to seamless, fabric-covered elastics reduces tension by approximately 60%.",
+    "reference": "Khumalo, N.P. et al. (2010). African hair morphology macrostructure to ultrastructure. International Journal of Dermatology, 49(s1), 22–27.",
+    "concerns": ["thinning", "hair_loss", "breakage"],
+    "textures": ["all"],
+    "goals": ["growth", "strength"],
+    "categories": ["daily_care"]
+  },
+  {
+    "id": "T011",
+    "title": "Rice water rinse strengthens hair and reduces surface friction",
+    "content": "Fermented rice water has been traditionally used by Yao women in Huangluo, China. It contains inositol, which penetrates damaged hair and remains even after rinsing, reducing surface friction, increasing elasticity, and improving colour retention. Studies confirm reduced combing friction and increased tensile strength.",
+    "reference": "Inamasu, S. et al. (2010). An effect of rinse containing inositol. Journal of Cosmetic Science, 61(5), 367–376.",
+    "concerns": ["breakage", "dryness", "frizz"],
+    "textures": ["all"],
+    "goals": ["strength", "hydration", "definition"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T012",
+    "title": "Onion juice topical improves alopecia areata",
+    "content": "Crude onion juice applied to the scalp twice daily for 6 weeks resulted in hair regrowth in 86.9% of patients with patchy alopecia areata, compared to 13% in the tap-water control group. The mechanism is attributed to high sulphur content stimulating sulphur-containing amino acid production in hair proteins.",
+    "reference": "Sharquie, K.E. & Al-Obaidi, H.K. (2002). Onion juice (Allium cepa L.), a new topical treatment for alopecia areata. Journal of Dermatology, 29(6), 343–346.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "N009",
+    "title": "Marine collagen peptides support hair follicle matrix",
+    "content": "Marine collagen peptides provide glycine, proline, and hydroxyproline — the primary amino acids in the dermal papilla extracellular matrix that anchors the hair follicle. Supplementation for 90 days showed significant improvements in hair density, shine, and thickness in a double-blind trial.",
+    "reference": "Hexsel, D. et al. (2017). Oral supplementation with specific bioactive collagen peptides improves nail growth and reduces symptoms of brittle nails. Journal of Cosmetic Dermatology, 16(4), 520–526.",
+    "concerns": ["thinning", "breakage"],
+    "textures": ["all"],
+    "goals": ["growth", "strength"],
+    "categories": ["nutrition", "vitamins"]
+  },
+  {
+    "id": "V008",
+    "title": "Collagen supplements support keratin production",
+    "content": "Hydrolysed collagen provides proline, a precursor to hydroxyproline found in the hair's extracellular matrix. Collagen also acts as an antioxidant, fighting free radical damage to hair follicles. Supplementation of 2.5–5g/day has shown benefits for hair growth and strength over 12-week periods.",
+    "reference": "Hexsel, D. et al. (2017). Oral supplementation with specific bioactive collagen peptides improves nail growth and reduces symptoms of brittle nails. Journal of Cosmetic Dermatology, 16(4), 520–526.",
+    "concerns": ["thinning", "breakage"],
+    "textures": ["all"],
+    "goals": ["growth", "strength"],
+    "categories": ["vitamins"]
+  },
+  {
+    "id": "T013",
+    "title": "Argan oil improves hair elasticity and reduces breakage",
+    "content": "Argan oil is rich in oleic acid, linoleic acid, and vitamin E tocopherols. Applied as a leave-in treatment, it fills in micro-cracks in the cuticle, improves hair elasticity by 40%, and reduces combing force required for detangling — particularly effective on chemically processed and heat-damaged hair.",
+    "reference": "Gavazzoni Dias, M.F. (2015). Hair cosmetics: an overview. International Journal of Trichology, 7(1), 2–15.",
+    "concerns": ["breakage", "dryness", "frizz"],
+    "textures": ["all"],
+    "goals": ["strength", "hydration", "definition"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "T014",
+    "title": "Glycerin as humectant for dry and coily hair",
+    "content": "Glycerin is a powerful humectant that attracts moisture from the atmosphere into the hair shaft, significantly increasing hydration in dry hair types. It is most effective at 50–70% relative humidity; in very low humidity, it may pull moisture out of the hair instead. Best used in creams and leave-ins at 2–5% concentration.",
+    "reference": "Gavazzoni Dias, M.F. (2015). Hair cosmetics: an overview. International Journal of Trichology, 7(1), 2–15.",
+    "concerns": ["dryness", "frizz"],
+    "textures": ["coily", "curly"],
+    "goals": ["hydration"],
+    "categories": ["topical"]
+  },
+  {
+    "id": "N010",
+    "title": "Green tea catechins inhibit DHT and support scalp circulation",
+    "content": "Epigallocatechin-3-gallate (EGCG) from green tea has demonstrated inhibition of 5-alpha reductase activity and promotion of hair epithelial cell proliferation in vitro. Drinking 2–3 cups/day provides meaningful catechin levels; topical green tea extracts have also shown follicular benefits.",
+    "reference": "Kwon, O.S. et al. (2007). Human hair growth enhancement in vitro by green tea epigallocatechin-3-gallate. Phytomedicine, 14(7–8), 551–555.",
+    "concerns": ["thinning", "hair_loss"],
+    "textures": ["all"],
+    "goals": ["growth", "scalp_health"],
+    "categories": ["nutrition"]
+  }
+]

@@ -348,7 +348,12 @@ def get_groq_client():
         st.stop()
     return Groq(api_key=api_key)
 
-SYSTEM_PROMPT = """You are Remedy, a warm, knowledgeable hair care consultant.
+# ── Phase 1: Conversation prompt ─────────────────────────────────────────────
+# Collects the user's profile across 3 exchanges, then outputs a compact
+# profile JSON (no remedy). The remedy is generated separately in Phase 2
+# using retrieved knowledge chunks, so citations are grounded in real papers.
+
+CONVERSATION_PROMPT = """You are Remedy, a warm, knowledgeable hair care consultant.
 Your role is to have a SHORT, friendly conversation (3–4 exchanges max) to learn about the user's hair.
 
 Ask about ONE thing at a time:
@@ -361,37 +366,150 @@ Do not end messages with a sentence explaining why you are asking the question (
 
 IMPORTANT: If the user's response does not actually answer your question (e.g. they repeat a previous message, go off topic, or give an unclear answer), do NOT move on. Politely acknowledge what they said and ask the same question again in a slightly different way. Only proceed to the next question once you have a clear, relevant answer to the current one. Never assume or infer an answer the user has not explicitly given.
 
-When you have collected all three pieces of information, output ONLY a valid JSON block (no other text) in this exact format:
+When you have collected all three pieces of information, output ONLY this JSON (no other text):
 {
   "profile_complete": true,
   "texture": "...",
   "concern": "...",
-  "goal": "...",
-  "categories_requested": ["topical", "nutrition", "vitamins", "daily_care"],
-  "remedy": {
-    "topical": ["remedy 1", "remedy 2", "remedy 3"],
-    "nutrition": ["food/drink 1", "food/drink 2", "food/drink 3"],
-    "vitamins": ["supplement 1", "supplement 2", "supplement 3"],
-    "daily_care": ["habit 1", "habit 2", "habit 3"]
-  },
-  "youtube_queries": ["specific YouTube search query for habit 1", "specific YouTube search query for habit 2", "specific YouTube search query for habit 3"]
+  "goal": "..."
 }
+"""
 
-Rules for remedy content:
-- Each item should be specific and actionable (e.g. "Rosemary water scalp spray 3x/week" not just "rosemary")
+# ── Phase 2: RAG remedy prompt ────────────────────────────────────────────────
+# Filled at runtime with retrieved knowledge chunks and the user's profile.
+# The model must ground every recommendation in the provided evidence.
+
+REMEDY_PROMPT_TEMPLATE = """You are Remedy, an evidence-based hair care consultant.
+Using ONLY the research evidence provided below, generate a personalised remedy plan for this user.
+
+━━━ HAIR SCIENCE EVIDENCE (retrieved from knowledge base) ━━━
+{context}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+USER PROFILE:
+- Main concern: {concern}
+- Hair texture/type: {texture}
+- Primary goal: {goal}
+
+Output ONLY a valid JSON object in this exact format (no other text):
+{{
+  "topical": ["remedy 1 [Author, Year — finding]", "remedy 2 [Author, Year — finding]", "remedy 3 [Author, Year — finding]"],
+  "nutrition": ["food 1 [Author, Year — finding]", "food 2 [Author, Year — finding]", "food 3 [Author, Year — finding]"],
+  "vitamins": ["supplement 1 [Author, Year — finding]", "supplement 2 [Author, Year — finding]", "supplement 3 [Author, Year — finding]"],
+  "daily_care": ["habit 1 [Author, Year — finding]", "habit 2 [Author, Year — finding]", "habit 3 [Author, Year — finding]"],
+  "youtube_queries": ["specific YouTube search query for habit 1", "specific YouTube search query for habit 2", "specific YouTube search query for habit 3"]
+}}
+
+Rules:
+- Every recommendation must cite evidence from the provided knowledge base using [Author, Year — one-line finding]
+- Each item must be specific and actionable (e.g. "Rosemary oil scalp massage 3×/week" not just "rosemary")
 - Match all recommendations to the user's specific texture, concern and goal
 - Topical: product types or DIY treatments applied to hair/scalp
 - Nutrition: specific foods or drinks that support hair health
 - Vitamins: specific supplements with dosage hints
 - Daily care: routines, habits, tools, lifestyle tips
-- Evidence: after each recommendation, append a brief evidence note in square brackets, e.g.
-  "Rosemary oil scalp massage 3×/week [Panahi et al., 2015 — comparable to minoxidil 2% for hair count]"
-  or "Biotin 2500–5000 mcg daily [supports keratin infrastructure; deficiency linked to hair loss — Patel et al., 2017]"
-  Keep citations concise (author, year, one-line finding). If no specific paper exists, cite a well-known mechanism instead, e.g. "[anti-inflammatory DHT-blocker via 5α-reductase inhibition]".
-- YouTube queries: for each daily_care item, write the exact search phrase a user would type on YouTube to find a helpful tutorial — be specific and include hair type/texture context, e.g. "rice water rinse tutorial for 4C natural hair" not just "rice water rinse".
+- YouTube queries: exact search phrase a user would type to find a tutorial, including their hair texture for specificity
 """
 
 FEEDBACK_LOG_PATH = os.path.join(os.path.dirname(__file__), "feedback_log.json")
+KNOWLEDGE_PATH = os.path.join(os.path.dirname(__file__), "hair_knowledge.json")
+
+# ── RAG helpers ───────────────────────────────────────────────────────────────
+
+@st.cache_data
+def load_knowledge() -> list:
+    """
+    Load and cache the hair science knowledge base from disk.
+    Cached with st.cache_data so the file is only read once per session.
+    """
+    with open(KNOWLEDGE_PATH, "r") as f:
+        return json.load(f)
+
+def retrieve_context(concern: str, texture: str, goal: str, top_k: int = 6) -> list:
+    """
+    Score every knowledge entry against the user's profile and return the
+    top-k most relevant entries.
+
+    Scoring weights:
+      concern match  → +3  (most important — drives the remedy category)
+      texture match  → +2  (determines product formulation advice)
+      goal match     → +2  (refines within concern)
+      texture = all  → +1  (universal entries still useful but ranked lower
+                             than texture-specific ones)
+
+    Entries with a score of 0 are excluded entirely.
+    """
+    knowledge = load_knowledge()
+    concern_l = concern.lower()
+    texture_l = texture.lower()
+    goal_l    = goal.lower()
+
+    scored = []
+    for entry in knowledge:
+        score = 0
+
+        # Concern: check if any entry concern tag appears in the user's concern string
+        for c in entry["concerns"]:
+            if any(word in concern_l for word in c.replace("_", " ").split()):
+                score += 3
+                break
+
+        # Texture: exact tag match or "all"
+        for t in entry["textures"]:
+            if t == "all":
+                score += 1
+            elif t in texture_l:
+                score += 2
+                break
+
+        # Goal: check if any entry goal tag appears in the user's goal string
+        for g in entry["goals"]:
+            if any(word in goal_l for word in g.replace("_", " ").split()):
+                score += 2
+                break
+
+        if score > 0:
+            scored.append((score, entry))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [entry for _, entry in scored[:top_k]]
+
+def format_context(chunks: list) -> str:
+    """
+    Format retrieved knowledge chunks into a numbered evidence block
+    that is injected into the RAG remedy prompt.
+    """
+    lines = []
+    for i, chunk in enumerate(chunks, 1):
+        lines.append(
+            f"[{i}] {chunk['title']}\n"
+            f"    Finding: {chunk['content']}\n"
+            f"    Reference: {chunk['reference']}"
+        )
+    return "\n\n".join(lines)
+
+def generate_remedy_from_chunks(concern: str, texture: str, goal: str, chunks: list) -> dict | None:
+    """
+    Phase 2b — LLM call with pre-retrieved knowledge chunks injected as context.
+    Separated from retrieval so the caller can show step-by-step progress.
+    Returns the parsed remedy dict, or None if JSON parsing fails.
+    """
+    context = format_context(chunks)
+    prompt  = REMEDY_PROMPT_TEMPLATE.format(
+        context=context,
+        concern=concern,
+        texture=texture,
+        goal=goal,
+    )
+    client = get_groq_client()
+    response = client.chat.completions.create(
+        model="qwen/qwen3-32b",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.6,
+    )
+    content = response.choices[0].message.content
+    content = re.sub(r"<think>[\s\S]*?</think>", "", content, flags=re.IGNORECASE).strip()
+    return parse_remedy(content)
 
 def log_feedback(helpful: bool, personalised: bool, comment: str, profile: dict):
     """
@@ -420,29 +538,25 @@ def log_feedback(helpful: bool, personalised: bool, comment: str, profile: dict)
 
 def chat_with_groq(messages: list) -> str:
     """
-    Send the full conversation history to Qwen3-32B via Groq and
-    return the model's plain-text reply.
+    Phase 1 — conversational profile collection using Llama 3.3 70B.
 
-    The system prompt is prepended on every call because the Groq API
-    is stateless — no conversation context is retained between requests.
-    Temperature is set to 0.7 to balance creativity with consistency
-    in the remedy recommendations.
+    Llama is used here (not Qwen3) because Qwen3 is a reasoning model that
+    leaks chain-of-thought into its conversational replies even after <think>
+    tag stripping. Llama produces clean, direct responses for the chat phase.
+    Qwen3 is reserved for Phase 2 (RAG remedy generation) where structured
+    reasoning over retrieved evidence is genuinely useful.
     """
     client = get_groq_client()
-    groq_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    groq_messages = [{"role": "system", "content": CONVERSATION_PROMPT}]
     for m in messages:
         role = "user" if m["role"] == "user" else "assistant"
         groq_messages.append({"role": role, "content": m["content"]})
     response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
+        model="llama-3.3-70b-versatile",
         messages=groq_messages,
         temperature=0.7
     )
-    content = response.choices[0].message.content
-    # Qwen3 prepends its chain-of-thought inside <think>…</think> tags.
-    # Strip that block so only the final reply reaches the user.
-    content = re.sub(r"<think>[\s\S]*?</think>", "", content, flags=re.IGNORECASE).strip()
-    return content
+    return response.choices[0].message.content
 
 def parse_remedy(text: str):
     """
@@ -736,19 +850,54 @@ elif st.session_state.remedy is None:
         st.session_state.messages.append({"role": "user", "content": user_input.strip()})
         response = chat_with_groq(st.session_state.messages)
         parsed = parse_remedy(response)
-        # If the model returned a complete profile JSON, store the remedy
-        # and switch the UI to the results view; otherwise continue the chat
+
         if parsed and parsed.get("profile_complete"):
-            st.session_state.remedy = parsed
-            recipe_links = fetch_nutrition_recipes(parsed["remedy"].get("nutrition", []))
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": "",
-                "is_remedy": True,
-                "remedy_data": parsed["remedy"],
-                "youtube_queries": parsed.get("youtube_queries", []),
-                "recipe_links": recipe_links,
-            })
+            # ── Phase 2: RAG remedy generation ──────────────────────────────
+            # Profile is complete. Show step-by-step progress while retrieving
+            # knowledge chunks and generating the evidence-grounded remedy.
+            with st.status("Building your personalised plan…", expanded=True) as status:
+                st.write("✦ Analysing your hair profile…")
+                time.sleep(0.4)
+                chunks = retrieve_context(
+                    concern=parsed["concern"],
+                    texture=parsed["texture"],
+                    goal=parsed["goal"],
+                )
+                st.write(f"✦ Retrieved {len(chunks)} relevant research papers…")
+                time.sleep(0.3)
+                st.write("✦ Generating your evidence-based remedy plan — this takes ~15 seconds…")
+                remedy_data = generate_remedy_from_chunks(
+                    concern=parsed["concern"],
+                    texture=parsed["texture"],
+                    goal=parsed["goal"],
+                    chunks=chunks,
+                )
+                if remedy_data:
+                    st.write("✦ Fetching recipes for your nutrition recommendations…")
+                    recipe_links = fetch_nutrition_recipes(
+                        remedy_data.get("nutrition", [])
+                    )
+                    status.update(label="Your plan is ready! 🌿", state="complete", expanded=False)
+                else:
+                    status.update(label="Something went wrong — please try again.", state="error", expanded=False)
+
+            if remedy_data:
+                full_profile = {**parsed, "remedy": remedy_data}
+                st.session_state.remedy = full_profile
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "",
+                    "is_remedy": True,
+                    "remedy_data": remedy_data,
+                    "youtube_queries": remedy_data.get("youtube_queries", []),
+                    "recipe_links": recipe_links,
+                })
+            else:
+                # Fallback: RAG parsing failed, continue conversation
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "I have everything I need! Give me just a moment to put your plan together…"
+                })
         else:
             st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
