@@ -510,8 +510,7 @@ def format_context(chunks: list) -> str:
 def generate_remedy_from_chunks(concern: str, texture: str, goal: str, chunks: list) -> dict | None:
     """
     Phase 2b — LLM call with pre-retrieved knowledge chunks injected as context.
-    Uses Llama 3.3 70B for reliable structured JSON output (Qwen3's reasoning
-    mode caused consistent parse failures in this structured generation task).
+    Uses Llama 3.3 70B for reliable structured JSON output.
     Returns the parsed remedy dict, or None if parsing fails.
     """
     context = format_context(chunks)
@@ -565,11 +564,9 @@ def chat_with_groq(messages: list) -> str:
     """
     Phase 1 — conversational profile collection using Llama 3.3 70B.
 
-    Llama is used here (not Qwen3) because Qwen3 is a reasoning model that
-    leaks chain-of-thought into its conversational replies even after <think>
-    tag stripping. Llama produces clean, direct responses for the chat phase.
-    Qwen3 is reserved for Phase 2 (RAG remedy generation) where structured
-    reasoning over retrieved evidence is genuinely useful.
+    Llama is used here because it produces clean, direct conversational replies.
+    Phase 2 (RAG remedy generation) also uses Llama 3.3 70B for reliable
+    structured JSON output over retrieved evidence.
     """
     client = get_groq_client()
     groq_messages = [{"role": "system", "content": CONVERSATION_PROMPT}]
