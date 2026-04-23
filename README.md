@@ -65,12 +65,14 @@ An `st.status` component shows live progress during remedy generation (profile a
 
 ## Project Structure
 
+```
 haircare_prototype/
 ├── haircare_upgrade.py     # Main Streamlit app
 ├── hair_knowledge.json     # 40-entry hair science knowledge base
 ├── feedback_log.json       # Logged user feedback (auto-created)
 ├── requirements.txt
 └── README.md
+```
 
 ## Key Prompt Engineering Decisions
 
