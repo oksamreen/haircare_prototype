@@ -1,115 +1,84 @@
 # haircare_prototype
-Second stage prototype for a personalized hair care consultant.
+Third stage prototype for a personalized hair care consultant.
 
 # 🌿 Remedy Me
 
-**Remedy Me** is a personalised hair care consultant powered by AI. Instead of selecting from dropdowns, you have a natural conversation with an AI consultant called Remedy — it asks about your hair concern, texture, and goal, then builds a fully tailored remedy plan just for you.
+**Remedy Me** is a personalised hair care consultant powered by AI. Instead of selecting from dropdowns, you have a natural conversation with an AI consultant called Remedy — it asks about your hair concern, texture, and goal, then builds a fully tailored, evidence-grounded remedy plan just for you.
 
-Live demo: [remedizeme.streamlit.app](https://remedizeme.streamlit.app)
+Live demo: [https://remedyup.streamlit.app/]
 
 ---
 
 ## What It Does
 
 - Guides you through a short 3-step conversation to understand your hair profile
-- Generates a personalised remedy plan across four categories: topical treatments, nutrition, vitamins, and daily care
-- Lets you customise which categories you want to see using the sidebar
+- Retrieves relevant evidence from a curated knowledge base of 40 hair science paper summaries before generating recommendations
+- Generates a personalised, citation-backed remedy plan across four categories: topical treatments, nutrition, vitamins, and daily care
 - Links topical and vitamin recommendations directly to Amazon search results
+- Links daily care items to hair-type-aware YouTube tutorial searches
+- Links nutrition items to real recipes via the Spoonacular API
+- Lets you customise which categories you want to see using the sidebar
 - Adapts the number of recommendations based on how many categories you select
+- Exports your full remedy plan as a downloadable PDF
+- Logs your feedback (helpful / personalised / comment) to validate the personalisation hypothesis
+
+---
+
+## What's New in Assignment 3
+
+### 1. RAG System (Retrieval-Augmented Generation)
+Rather than relying on the LLM's parametric memory, the app retrieves relevant evidence from a curated knowledge base of 40 hair science paper summaries before generating any recommendations. Each entry is tagged by concern, texture, and goal; the top 6 most relevant chunks are scored and injected into the prompt. This grounds every recommendation in real literature (Panahi et al. 2015, Rushton 2002, Koyama 2016, Patel 2017, etc.).
+
+### 2. Two-Phase Architecture
+Phase 1 (Llama 3.3 70B) collects the hair profile cleanly. Phase 2 (Llama 3.3 70B with retrieved context) generates the evidence-grounded remedy plan. Separate prompts make citations traceable and the system more auditable.
+
+### 3. YouTube Tutorial Links
+The LLM generates hair-type-aware YouTube search queries per daily care item. These render as Tutorial buttons directly under each daily care recommendation.
+
+### 4. Recipe Links via Spoonacular API
+Each nutrition recommendation is paired with a real recipe fetched from the Spoonacular API.
+
+### 5. PDF Export
+Users can download their full remedy plan as a formatted PDF including their hair profile, all four remedy categories with citations, and a medical disclaimer.
+
+### 6. Personalisation Feedback Loop
+After the remedy is shown, users are asked "Was this helpful?" and "Did it feel personalised?" with an optional comment. Responses are timestamped and logged to `feedback_log.json` alongside the user's hair profile.
+
+### 7. Sample Q&A on Landing Screen
+A collapsible expander shows a complete example consultation end-to-end, reducing first-time user confusion.
+
+### 8. Step-by-Step Progress Indicator
+An `st.status` component shows live progress during remedy generation (profile analysis → paper retrieval → remedy generation → recipe fetch).
 
 ---
 
 ## Tech Stack
 
 - **Frontend:** Streamlit
-- **LLM:** Qwen3-32B via Groq (`groq`)
-- **Language:** Python
-
----
-
-## How to Run Locally
-
-**1. Clone the repo**
-```bash
-git clone https://github.com/oksamreen/haircare_prototype.git
-cd haircare_prototype
-```
-
-**2. Install dependencies**
-```bash
-pip install streamlit groq
-```
-
-**3. Add your Groq API key**
-
-Create a `.streamlit/secrets.toml` file:
-```bash
-mkdir .streamlit
-echo 'GROQ_API_KEY = "your-key-here"' > .streamlit/secrets.toml
-```
-
-Get a free API key at [console.groq.com](https://console.groq.com)
-
-**4. Run the app**
-```bash
-streamlit run haircare_upgrade.py
-```
+- **LLM:** Llama 3.3 70B via Groq API
+- **RAG:** Custom scoring retrieval over `hair_knowledge.json`
+- **Recipes:** Spoonacular API
+- **PDF:** fpdf2
+- **Fonts:** Cormorant Garamond, DM Sans (Google Fonts)
 
 ---
 
 ## Project Structure
 
-```
 haircare_prototype/
-├── haircare_upgrade.py      # Main app
-├── feedback_log.json        # Auto-created; stores user feedback entries
-├── requirements.txt         # Dependencies
-├── .streamlit/
-│   └── secrets.toml         # API key (not committed)
-└── .gitignore
-```
+├── haircare_upgrade.py     # Main Streamlit app
+├── hair_knowledge.json     # 40-entry hair science knowledge base
+├── feedback_log.json       # Logged user feedback (auto-created)
+├── requirements.txt
+└── README.md
+
+## Key Prompt Engineering Decisions
+
+- One-question-at-a-time prevents the model from front-loading all questions
+- Explicit guardrail against filler phrases ("this will help me tailor your plan")
+- Phase 2 prompt instructs the model to cite only from retrieved evidence; omit brackets entirely when no paper is available
+- Temperature 0.6 for structured JSON generation in Phase 2 (vs 0.7 for conversation)
 
 ---
 
-## Prompt Engineering Decisions
-
-### System prompt design
-
-The system prompt gives the LLM a persona (`Remedy`) with an explicit role, a bounded conversation structure (3 questions, one at a time), and strict output rules. This three-part structure was a deliberate choice:
-
-1. **One question at a time** — prevents the model from front-loading all questions into a single message, which would feel clinical rather than consultative. Users tested early prototypes and responded better to the conversational pacing.
-
-2. **Guardrails against drift** — the prompt explicitly instructs the model: *"If the user's response does not actually answer your question… do NOT move on. Politely acknowledge and ask the same question again."* This prevents the common failure mode where the LLM infers an answer the user never gave, leading to mismatched recommendations.
-
-3. **Structured JSON output** — once the profile is complete, the model switches modes and outputs a single JSON block. Separating the conversational phase from the output phase (rather than mixing them) makes parsing deterministic. A `regex` fallback extracts the JSON even if the model wraps it in prose.
-
-4. **Evidence-based citations** — each remedy item is required to include a bracketed evidence note (e.g. `[Panahi et al., 2015 — comparable to minoxidil 2%]`). This grounds recommendations in hair science literature rather than generic wellness advice, directly addressing the professor's "narrow domain limits originality" note.
-
-### Why multi-turn over one-shot?
-
-A one-shot approach (e.g. a form where the user fills in all fields) would produce equally structured output, but user testing showed it feels impersonal. The multi-turn design builds rapport and allows the model to ask clarifying follow-ups if an answer is ambiguous — something a static form cannot do.
-
-### Temperature
-
-Set to `0.7` — high enough to produce varied, creative remedy items across sessions, low enough to keep the JSON output structurally consistent. Lower values (e.g. `0.3`) produced repetitive recommendations; higher values (e.g. `1.0`) occasionally broke the JSON schema.
-
----
-
-## Feedback & Personalisation Validation
-
-After the remedy plan is shown, users are asked:
-- *Was the remedy plan helpful?*
-- *Did it feel personalised to you?*
-- *(Optional)* Any other thoughts?
-
-Responses are timestamped and logged to `feedback_log.json` alongside the user's hair profile (texture, concern, goal). This dataset lets us quantitatively test the hypothesis that personalised recommendations score higher than generic advice — the core claim of the product.
-
----
-
-## Notes
-
-- Never commit your API key — `secrets.toml` is listed in `.gitignore`
-- `feedback_log.json` is auto-created on first feedback submission; it is excluded from the repo via `.gitignore`
-- This app was built as part of the PPDAI course at ESADE
-
-Author: Samreen
+*Remedy Me uses AI to generate personalised suggestions. Always consult a trichologist for medical concerns.*
